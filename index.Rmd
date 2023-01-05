@@ -416,7 +416,7 @@ $$
 $$
   \frac{1}{N} \sum_i X_i = \mu + O_P(N^{-1/2})
 $$
-because $N^{-1/2}(\bar X - \mu)$ converges in distribution to a normal distribution.
+because $N^{1/2}(\bar X - \mu)$ converges in distribution to a normal distribution.
 
 - The theories of discrete and continuous variables are unified by the _measure theoretic approach to probability_, which we don't require you to know. Within this framework, the expected value of a random variable $X \sim F$ is written
 $$
