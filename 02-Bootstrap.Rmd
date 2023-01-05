@@ -1,0 +1,191 @@
+# Quantifying Uncertainty Via the Bootstrap
+
+## Our Goalposts
+
+Recall that the goal of Frequentist inference is to obtain estimators,
+intervals, and hypothesis tests that have strong properties with respect to the
+_sampling_ distribution (as opposed to the posterior distribution). Given data
+$\Data$ a Frequentist approach might be to construct an interval estimate for a
+parameter $\psi$ such that
+$$
+  G_\theta\{L(\Data) \le \psi \le U(\Data)\} = 1 - \alpha,
+$$
+for a desired _confidence level_ $1 - \alpha$. Such intervals are often of the
+form $\widehat\psi \pm z_{\alpha/2} \, s_{\widehat\psi}$, where where $\widehat
+\psi$ is a point estimate, $s_{\widehat \psi}$ is an estimate of the standard
+deviation of $\widehat \psi$, and $z_{\alpha/2}$ corresponds to an appropriate
+quantile of the standard normal distribution. While rarely possible, we would
+like coverage to hold exactly and without depending on $\theta$.
+
+## The Bootstrap Principle
+
+It is not always possible, given a sample $\Data \sim G$, to determine the
+sampling distribution of a statistic $\widehat \psi = \widehat \psi(\Data)$.
+This is because we do not know the distribution $G$; of course, if we knew $G$,
+we would not need to do any inference. The bootstrap gets around this problem by
+using the data to estimate $G$ from the data to obtain some $\widehat G$. Given
+$\widehat G$, we can compute the sampling distribution of 
+$\psihat^\star = \psihat(\Data^\star)$ where $\Data^\star \sim \Ghat$.
+
+> __The Bootstrap Principle__
+  Suppose that $\Data \sim G$, $\psi = \psi(G)$ is some parameter of the
+  distribution $G$ of interest, and $\psihat(\Data)$ is some statistic aimed at
+  estimating $\psi$. Then we can evaluate the sampling distribution of
+  $\psihat(\Data)$ by
+>
+>  1. estimating $G$ with some $\Ghat$; and
+>
+>  2. using the sampling distribution of $\psihat(\Data^\star)$ as an estimate
+     of the sampling distribution of $\psihat(\Data)$.
+
+Implementing the bootstrap principle has two minor complications. First, how do
+we estimate $G$? Second, how do we compute the distribution sampling
+distribution of $\psihat(\Data^\star)$? 
+
+How we estimate $G$ typically depends on the structure of the problem. Suppose,
+for example, that $\Data = (X_1, \ldots, X_N)$ which are sampled iid from $F$
+(so that $G = F^N$). Then a standard choice is to use the empirical distribution
+function $\Fhat = \EmpF_N = N^{-1} \sum_{i=1}^N \delta_{X_i}$ where $\delta_x$
+is the point mass at $x$ (so that $\Ghat = {\Fhat}^N$); this is referred to as the
+_nonparametric bootstrap_ because it does not depend on any parametric
+assumptions about $F$.
+
+In all but the simplest settings, Monte Carlo is used to approximate the
+sampling distribution of $\psihat^\star$. That is, we sample $\Data^\star_1,
+\ldots, \Data^\star_B$ independently from $\Ghat$ and take $\frac{1}{B}
+\sum_{b=1}^B \delta_{\psihat^\star_b}$ as our approximation of the sampling
+distribution of $\psihat$, where $\psihat^\star_b = \psihat(\Data^\star_b)$.
+
+:::{.exercise}
+  
+  Suppose that $X_1, \ldots, X_N \iid F$ and let $\psi(F)$ denote the population
+  mean of $F$, i.e., $\psi(F) = \E_F(X_i) = \int x \, F(dx)$. We consider
+  bootstrapping the sample mean $\bar X_N = N^{-1} \sum_{i=1}^N X_i$ using the
+  approximation $\widehat F = \mathbb F_N$. That is, we consider the sampling
+  distribution of $\bar X^\star = N^{-1} \sum_{i=1}^N X_i^\star$ where $X_1^\star,
+  \ldots, X_N^\star$ are sampled independently from $\mathbb F_N$.
+  
+  a. What is $\psi(\mathbb F_N)$?
+  
+  b. The _actual_ bias of $\bar X_N$ is $\E_F\{\bar X_N - \psi(F)\} = 0$. What
+     is the _bootstrap estimate_ of the bias
+     $\E_{\mathbb F}(\bar X^\star_N - \bar X)$?
+     
+  c. The variance of $\bar X_N$ is $\sigma^2_F / N$ where $\sigma^2_F$ is 
+     $\Var_F(X_i)$. What is the _bootstrap estimate_ of the variance of
+     $\bar X$, $\Var_{\mathbb F_N}(\bar X^\star)$?
+      
+  d. A parameter $\psi$ is said to be _linear_ if it can be written as
+     $\psi(F) = \int t(x) \, F(dx)$ for some choice of $t(x)$. In this case
+     it is natural to estimate $\psi$ using $\bar T = N^{-1} \sum_i t(X_i)$.
+     Write down the bootstrap estimate of the bias and variance of $\bar T$
+     in this setting.
+
+:::
+
+Given the sampling distribution of $\psihat$, we can do things like construct
+confidence intervals for $\psi$. For example, it is often the case that
+$\psihat$ is asymptotically normal and centered at $\psi$. We can then use the
+bootstrap estimate of $\Var(\psihat)$ to make the confidence interval
+$$
+\begin{aligned}
+  \psihat \pm z_{\alpha/2} \sqrt{\Var_{\Ghat}(\psihat^\star)}.
+\end{aligned}
+$$
+In this way, the bootstrap gives us a way to estimate $\Var(\psihat)$
+more-or-less automatically.
+
+For the next problem, we recall the _delta method_ approach to computing
+standard errors. Suppose that $\muhat$ has mean $\mu$ and variance $\tau^2$ and
+that we want to approximate the mean and variance of $g(\muhat)$. The delta
+method states that, if $\tau$ is sufficiently small, then 
+$\E\{g(\muhat)\} \approx g(\mu)$ and 
+$\Var\{g(\muhat)\} \approx g'(\mu)^2 \tau^2$.
+This is based on the somewhat crude approximation
+$$
+  g(\muhat) \approx g(\mu) + (\muhat - \mu) g'(\mu) + \text{remainder}
+$$
+with the remainder being of order $O(\tau^2)$. The delta method approximation
+is obtained by ignoring the remainder.
+
+:::{.exercise #notes-boot-lognormal}
+
+  Let $X_1, \ldots, X_n \iid \Normal(\mu,1)$ and let $\psi = e^\mu$ and $\psihat
+  = e^{\bar X_n}$ be the MLE of $\psi$. Create a dataset using $\mu = 5$
+  consisting of $n = 20$ observations.
+
+  (a) Use the delta method to get the standard error and 95\% confidence
+      interval for $\psi$.
+      
+  (b) Use the nonparametric bootstrap to get the standard error and 95\%
+      confidence interval for $\psi$.
+      
+  (c) The _parametric bootstrap_ makes use of the assumption that $F$ (in this
+      case) is a normal distribution. Specifically, we take $\Fhat$ equal to its
+      maximum likelihood estimate, the $\Normal(\bar X_n, 1)$ distribution.
+      Using the parametric bootstrap, compute the standard error and a 95%
+      confidence interval for $\psi$.
+      
+  (d) Plot a histogram of the bootstrap replications for the parametric and
+      nonparametric bootstraps, along with the approximation of the sampling
+      distribution of $\psihat$ obtained from the delta method (i.e.,
+      $\Normal(\psihat, \widehat s^2)$). Compare these to the true sampling
+      distribution of $\psihat$. Which approximation is closest to the true
+      distribution?
+      
+  (e) Depending on the random data generated for this exercise, you most likely
+      will find that the sampling distribution of $\psihat$ estimated by both
+      the bootstrap and the delta method are not so good; the biggest problem is
+      that the sampling distribution will be locatin-shifted by $\psihat - psi$.
+      Repeat part (d), but instead comparing the sampling distribution of
+      $\psihat - \psi$ to the bootstrap estimates obtained by sampling
+      $\psihat^\star - \psihat$.
+
+:::
+
+
+The lesson of part (e) is that the bootstrap approximation is likely to be best
+when we apply it to _pivotal quantities_. A quantity $S(X, \psi)$ (which is
+allowed to depend on $\psi$) is said to be pivotal if it has a distribution
+which is independent of $\psi$. For example, in Exercise
+\@ref(exr:notes-boot-lognormal) the statistic $\sqrt n(\bar X - \mu)$ is a
+pivotal quantity, and in general $Z = \frac{\sqrt n (\bar X - \mu)}{s}$ is
+asymptotically pivotal (where $s$ is the sample standard deviation).
+
+:::{.exercise}
+
+  While we saw an improved approximation for $\psihat - \psi$, argue that this
+  is nevertheless not a pivotal quantity. Propose a pivotal quantity
+  $S(\psihat, \psi)$ which is more suitable for bootstrapping.
+
+:::
+
+The intervals computed in the previous exercise rely on asymptotic normality,
+which we may like to avoid. An alternative approach is to apply the bootstrap to
+$\zeta = \psihat - \psi(F)$ rather than to $\psihat$ directly, so that $\psi(F)
+= \psihat - \zeta$. If we knew the $\alpha/2$ and $(1 - \alpha/2)$ quantiles of
+$\zeta$ (say, $\zeta_{\alpha/2}$ and $\zeta_{1-\alpha/2}$), then we could form a
+confidence interval
+$$
+\begin{aligned}
+    G_\theta(\psihat - \zeta_{1-\alpha/2} 
+    \le \psi \le \psihat - \zeta_{\alpha/2})
+    = 1 - \alpha.
+\end{aligned}
+$$
+
+The _empirical bootstrap_ estimates these quantiles from the quantiles of
+$\psihat^\star - \psi(\Fhat)$, which are computed by simulation. More generally,
+we could use this approach for any pivotal quantity; for example, since $\xi =
+\psihat / \psi$ is pivotal in Exercise \@ref(exr:notes-boot-lognormal), we could
+use the interval $(\psihat / \xi_{1-\alpha/2}, \psihat / \xi_{\alpha/2})$ as our
+interval.
+
+:::{.exercise}
+  Use the nonparametric bootstrap to make a 95\% confidence interval using the
+  pivotal quantity $\xi$ described above.
+:::
+
+
+
+

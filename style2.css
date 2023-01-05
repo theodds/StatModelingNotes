@@ -1,0 +1,31 @@
+.solution {
+  background: #EAFFE9;
+  color: black;
+  border: 2px solid #EAFFE9;
+  border-radius: 10px;
+  margin: 20px 0;
+}
+
+.exercise {
+  background: #E9FBFF;
+  color: black;
+  /*border: 2px solid lightgray;*/
+  border: 2px solid #E9FBFF;
+  margin: 20px 0;
+  padding: 10px 15px;
+}
+
+.exercise .exercise {
+  padding: 0px;
+  margin: 0px;
+  border: 0px;
+}
+
+.warning {
+  background: #FDE0E0;
+  color: black;
+  border: 2px solid #FDE0E0;
+  border-radius: 0px;
+  margin: 20px 0;
+  padding: 10px 15px;
+}

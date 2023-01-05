@@ -1,0 +1,7 @@
+.Rhistory
+.Rproj.user/
+_book/
+_bookdown_files/
+rsconnect/
+index.knit.md
+*.swp

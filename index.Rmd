@@ -1,0 +1,431 @@
+--- 
+title: "Statistical Modeling II: SDS383D"
+author: "Antonio R. Linero"
+date: "`r Sys.Date()`"
+site: bookdown::bookdown_site
+documentclass: book
+bibliography: [book.bib, packages.bib]
+# url: your book url like https://bookdown.org/yihui/bookdown
+# cover-image: path to the social sharing image like images/cover.jpg
+description: |
+  These notes cover the second semester in a two-semester sequence on
+  statistical modeling. It focuses on constructing, drawing conclusions from,
+  and critiquing probabilistic models. Planned topics include generalized
+  linear models, the bootstrap, hierarchichal models, nonparametric estimation,
+  and generalized estimating equations.
+link-citations: yes
+header-includes: |
+ \newcommand{\asim}{\stackrel{{}_{\bullet}}{\sim}}
+ \newcommand{\bX}{\mathbf X}
+ \newcommand{\bY}{\mathbf Y}
+ \newcommand{\Beta}{\operatorname{Beta}}
+ \newcommand{\Binomial}{\operatorname{Binomial}}
+ \newcommand{\Data}{\mathcal D}
+ \newcommand{\diag}{\operatorname{diag}}
+ \newcommand{\Dirichlet}{\operatorname{Dirichlet}}
+ \newcommand{\E}{\mathbb E}
+ \newcommand{\EmpF}{\mathbb F}
+ \newcommand{\Fhat}{\widehat F}
+ \newcommand{\Fisher}{\mathcal I}
+ \newcommand{\Ghat}{\widehat G}
+ \newcommand{\Gam}{\operatorname{Gam}}
+ \newcommand{\Identity}{\mathrm{I}}
+ \newcommand{\iid}{\stackrel{\text{iid}}{\sim}}
+ \newcommand{\logit}{\operatorname{logit}}
+ \newcommand{\muhat}{\widehat\mu}
+ \newcommand{\Odds}{\operatorname{Odds}}
+ \newcommand{\OFisher}{\mathcal J}
+ \newcommand{\psihat}{\widehat\psi}
+ \newcommand{\Normal}{\operatorname{Normal}}
+ \newcommand{\Poisson}{\operatorname{Poisson}}
+ \newcommand{\Reals}{\mathbb R}
+ \newcommand{\Var}{\operatorname{Var}}
+ \newcommand{\zeros}{\mathbf{0}}
+
+---
+
+# Introduction to Probabilistic Modeling
+
+In this collection of notes, we briefly outline the main thrust of this course
+by discussing (at a high level of generality) the topic of _probabilitic
+modeling_. Throughout this course we will focus on the application of
+probabilistic modeling with an eye towards solving problems involving complex
+datasets. The following problems will recur throughout:
+
+1. _How do we design an appropriate probabilistic model that answers the questions we are interested in?_
+
+2. _Computationally, how do we extract answers from a probabilistic model?_
+
+3. _How do we properly account for uncertainty in our conclusions?_
+
+4. _How do we check that our model is "good enough" as a representation of reality for our purposes, and ensure that the conclusions we draw are robust?_
+
+## Very Simple Probabilistic Models
+
+At this stage in your education, you are undoubtedly familiar with the concept of probabilistic modeling. All this means is that:
+
+1. We have a collection $\Data$ of data that we have measured.
+
+2. We posit that $\Data$ has arisen by randomly sampling it according to some _data generating process_ $G$, i.e., $\Data \sim G$.
+
+That's it! The most generic probabilistic model stops after Step 2. Such a model is not very useful, however; for example, if $\Data = (X_1, \ldots, X_N)$ and all we know is that $G$ is an arbitrary probability distribution on $\Reals^N$, then it will be more-or-less impossible to draw any conclusions about $G$ from the data. Generally we assume more.
+
+:::{.example #notes-1-iid name="IID Sampling"}
+  Suppose that $\Data = (X_1, \ldots, X_N)$ and suppose further that
+  $X_i \iid F$ so that $G = F^N$. Then a reasonable estimate of $F$ is the
+  _empirical distribution_
+  $$
+    \EmpF_N = \frac{1}{N} \sum_{i = 1}^N \delta_{X_i},
+  $$
+  where $\delta_{X_i}$ denotes the point mass distribution at $X_i$. We make no
+  assumptions about $F$ itself; it can be (say) a normal distribution, an
+  exponential distribution, a Cauchy distribution, or any other distribution.
+:::
+
+Part of the point of brining up this example is to point that, while weak, the assumption that a collection of data is iid _is an assumption that should be scrutinized_. Data might fail to be iid if (for example) the $X_i$'s correspond to a time series.
+
+Already in Example \@ref(exm:notes-1-iid) interesting problem start occurring. For example, suppose we know that $F$ _has a density_ $f(x)$ that we are interested in estimating. How do we go about estimating $f(x)$ within the context of the iid model?
+
+:::{.example #notes-1-density name="Density Estimation"}
+  The `galaxy` dataset available in the `MASS` package contains "a numeric
+  vector of velocities in km/sec of 82 galaxies from 6 well-separated conic
+  sections of an unfilled survey of the Corona Borealis region. Multimodality in
+  such surveys is evidence for voids and superclusters in the far universe."
+  
+  Our primary goal is to determine whether the density $f(x)$ of the velocities
+  is multimodal. We'll assume that the sample of galaxies is taken iid from some
+  distribution $Y_i \iid F$ with density $f(y)$. We then form the density
+  estimate
+  \begin{align*}
+    \widehat f(y) = \frac{1}{N} \sum_i \phi(y; Y_i, h)
+  \end{align*}
+  where $\phi(y; \mu, \sigma)$ denotes the density of a $\Normal(\mu, \sigma^2)$
+  distribution. This estimator is biased and, in fact, there are _no_ unbiased
+  estimators of $f(y)$ if we make no further assumptions on $F$. A plot of the
+  density estimate is given in Figure \@ref(fig:notes-1-galaxy).
+:::
+
+```{r notes-1-galaxy, fig.cap="Density estimate for the `galaxy` dataset.", echo=FALSE}
+plot(density(MASS::galaxies), main = "Galaxies")
+rug(MASS::galaxies)
+```
+
+The estimator $\widehat f(y)$ described in Example \@ref(exm:notes-1-density) is called a _kernel density estimator_ (KDE). KDEs are biased and, in general, there is no way around this. The introduction of bias is a concession we make in order to make progress on our problem. All interesting problems require some form of concession; a common concession is to assume that the data arise from a _parametric family_.
+
+:::{.example name="Linear Regression"}
+
+  Suppose that $\Data = \{(x_1, Y_1), \ldots, (x_N, Y_N)\}$ with the $x_i$'s
+  being fixed vectors in $\Reals^P$, with $G$ satisfying the restrictions
+  \begin{align*}
+    Y_i = r(x_i) + \epsilon_i, \qquad \Var(\epsilon_i) = \sigma^2 < \infty.
+  \end{align*}
+  Without making further assumptions, this sort of problem arises frequently in
+  various _machine learning_ problems, with the goal of estimating the mean
+  function $r(x)$ to provide predictions on new data. As statisticians, we often
+  make the further assumption that
+  \begin{align}
+    r(x_i) = x_i^\top \beta,
+    (\#eq:linear)
+  \end{align}
+  for some _parameter vector_ $\beta$. If this assumption fails, we will incur
+  bias in estimation of $r(x)$, among other potential problems. We might assume
+  a model like \@ref(eq:linear) for many reasons:
+  
+  1. The model \@ref(eq:linear) is _interpretable_, as by this point you will
+     all be familiar with how to interpret the coefficients of a linear model.
+     
+  2. The usual least-squares estimator 
+     $\widehat\beta = \arg \min_\beta \|\bY - \bX\beta\|^2 = (\bX^\top \bX)^{-1} \bX^\top \bY$ 
+     can be computed efficiently and is relatively stable.
+:::
+
+## Uncertainty Quantification
+
+The philosophical question of how to quantify our ``uncertainty'' in our
+conclusions has been widely debated. The two most popular approaches are to
+quantify uncertainty through the sampling distribution of the data $\Data$
+(_Frequentist inference_) or through a posterior distribution for the
+parameter $\theta$ (_Bayesian inference_).
+
+We won't spend much time arguing for one approach over the other. My personal
+belief is that debating the _merits_ of the two approaches is largely a
+distraction, and that it is a bad sign if any methodology you want to use
+depends fundamentally on philosophical considerations. On the other hand, I
+think that the two methods often can _complement_ each other, as
+considering a problem from both perspectives can lead to a better overall
+understanding of that problem.
+
+### Frequentist Uncertainty Quantification
+
+The Frequentist approach makes use of the sampling distribution $\{G_\theta :
+\theta \in \Theta\}$ to perform inference. Frequentist methodology attempts to
+make guarantees about methods in terms of _repeated experiments_ --- if we were
+to repeat _exactly the same_ experiment $\Data \sim G_{\theta_0}$, can we create
+methods which are guaranteed to perform well even if $\theta_0$ is unknown?
+
+For example, we might aim to construct an interval $[L(\Data), U(\Data)] = [L,
+U]$ such that, for some parameter of interest $\theta_j$, $L \le \theta_j \le U$
+holds with some specified probability $1-\alpha$. Ideally, we would like to
+choose $(L, U)$ so that this holds _irrespective of the true value of $\theta$_,
+i.e.,
+$$
+\begin{aligned}
+  \inf_{\theta \in \Theta} G_\theta(L \le \theta_j \le U) = 1 - \alpha.
+\end{aligned}
+(\#eq:ci)
+$$
+That is, no matter which $\theta$ we take, we are guaranteed that our interval
+covers with probability at least $1 - \alpha$. Often, this goal is a bit too
+ambitious, and instead we ask only that \@ref(eq:ci) holds asymptotically with
+respect to the size of the data $N$, i.e., we ask that $\inf_{\theta \in \Theta}
+G_\theta(L \le \theta_j \le U) = 1 - \alpha + o(1)$. Fundamental to the
+Frequentist paradigm is that the methods behave well _uniformly_ in $\theta$ to
+the extent possible, in order to account for the fact that $\theta$ is unknown.
+
+## Bayesian Inference for Uncertainty Quantification
+
+The _Bayesian_ approach to probabilistic modeling, by contrast, specifies a
+_prior_ distribution $\Pi$ on the data generating process $G$. This typically
+occurs by way of a _prior density_ $\pi(\theta)$ on a _parametric family_
+$\{G_\theta : \theta \in \Theta\}$ where $\Theta$ is a subset of $\Reals^P$.
+
+We then apply Bayes rule to obtain the posterior distribution:
+$$
+  \pi(\theta \mid \Data)
+  =
+  \frac{\pi(\theta) \, L(\theta)}{m_\pi(\Data)}
+  \qquad \text{where} \qquad
+  m_\pi(\Data) = \int \pi(\theta) \, L(\theta) \ d\theta,
+$$
+and $L(\theta)$ (which tacitly depends on $\Data$) denotes the likleihood
+function of $\theta$. The posterior distribution $\pi(\theta \mid \Data)$ can
+then be used to quantify our uncertainty in $\theta$ in terms of probabilities.
+
+There are many ways that folks have tried to make sense of what the posterior
+probabilities represent philosophically. I endorse the following interpretation:
+
+> **Claim:** The posterior distribution $\pi(\theta \mid \Data)$ describes what 
+  a perfectly-rational robot would believe about $\theta$ if (i) the prior
+  $\pi(\theta)$ described their subjective beliefs about $\theta$ prior to
+  observing data, and (ii) the only thing they knew about the external world was
+  that $\Data \sim G_\theta$ for some $\theta \in \Theta$ (and they knew this
+  with 100\% certainty).
+
+Not everyone will agree with this interpretation, but I think it has some
+features that make it useful to anchor our understanding to. It suggests that we
+should not interpret posteriors as _our_ rational beliefs about $\theta$, but
+rather the beliefs of a particular, perfectly rational, agent. It also gives us
+avenues for model criticism, in two ways:  we can criticize the choice of the
+prior $\pi(\theta)$ in (i), or we can criticize the choice of $G_\theta$ in
+(ii). It also reminds us that the output of Bayesian models themselves are
+operating under very strong assumptions: _our robot believes the model with 100%
+certainty, and so can afford to behave in ways that we might deem irrational to
+someone who recognizes that this is not the case._
+
+## Computation via Markov chain Monte Carlo
+
+You will be exposed to Bayesian computation in other courses. On the off chance
+that you have not covered this material yet, I will review the high-level idea
+of Markov chain Monte Carlo.
+
+Our ultimate goal is to obtain inferences for $\theta$ based on the posterior
+distribution $\pi(\theta \mid \Data)$. We might be interested, for example, in
+the the _Bayes estimator_ for $\theta$, given by
+$$
+  \widetilde \theta
+  = \E_\pi(\theta \mid \Data)
+  = \int \theta \, \pi(\theta \mid \Data) \ d\theta.
+$$
+The catch is that integrals like this are often computationally intractable. If
+we could generate a _sample_ $\theta_1, \ldots, \theta_B \iid \pi(\theta \mid
+\Data)$ from the posterior, however, then we could approximate this expectation
+as $\widetilde\theta \approx B^{-1} \sum_{b = 1}^B \theta_b$. We could also
+approximate a $100(1 - 2\alpha)\%$ credible interval for $\theta$ by taking the
+$\alpha^{\text{th}}$ and $(1-\alpha)^{\text{th}}$ sample quantiles of the
+$\theta_b$'s. These are just examples; we can basically compute whatever
+features of $\pi(\theta\mid\Data)$ we want if we have a sample from the
+posterior.
+
+Unfortunately, sampling from $\pi(\theta \mid \Data)$ is (in general) no easier
+than computing integrals. The idea behind Markov chain Monte Carlo (MCMC) is to
+replace the samples $\theta_1, \ldots, \theta_B \iid \pi(\theta \mid \Data)$
+with a _Markov chain_ such that $\theta_b \sim q(\theta \mid \theta_{b-1})$. The
+distribution $q(\theta \mid \theta')$ is called a _Markov transition function_
+(MTF), and as long as the MTF leaves the posterior invariant
+$$
+  \pi(\theta \mid \Data) 
+  = \int q(\theta \mid \theta') \, 
+      \pi(\theta' \mid \Data) \ d\theta'
+$$
+and satisfies some other extremely minor technical conditions, the samples
+$\theta_1,\ldots,\theta_B$ will function more-or-less like a sample from the posterior. There are two catches.
+
+
+1. The samples are no longer independent, so we may have to take a (much) larger
+   $B$ to get reasonable approximations.
+
+1. The samples are no longer distributed exactly according to 
+   $\pi(\theta \mid \Data)$.
+
+Both of these issues are related to how fast the chain _mixes_, i.e., how
+quickly the chain "forgets" its history.
+
+To address the second issue, we typically _burn in_ the chain by discarding
+(say) the first $1000$ samples from the chain, the idea being that we should be
+pretty close to $\pi(\theta \mid \Data)$ at that point. The number 1000 I just
+mentioned is arbitrary, and the correct burn in sample size can range from less
+than $10$ (for good chains) to larger than the number of particles in the
+observable universe (for slow mixing chains, and no, I am not exaggerating).
+
+Upon reflection, the first issue is not too different from the first, but it is
+generally resolved in a different way. One approach is to _thin_ the chain,
+retaining only (say) every $10^{\text{th}}$ sample, and then treat the samples
+as approximately independent. Again, $10$ is arbitrary. My personal opinion is
+that thinning is a waste of time _unless you are running out of RAM_. The better
+solution is to explicitly account for dependence in the samples in your
+assessments of your effective sample size, which will typically be returned by
+whatever software you are using.
+
+
+### Markov chain Monte Carlo with `Stan`
+
+In this course, we will use the `Stan` software package in `R`. `Stan` has
+the following very nice features.
+
+1. It allows us to fit models simply by writing them down, without needing to
+construct the MTF by hand.
+
+1. The MTF that it uses is state-of-the-art for most models.
+
+1. It automates things like checking the mixing of your chains, computing
+summaries, and so forth.
+
+Beyond these comments, we won't sweat the details behind MCMC, aside from
+occasionally checking that our Markov chains are mixing well.
+
+In this course we will use the `rstan` interface to `Stan`. To get this working
+we first install the `rstan` package:
+```{r, eval = FALSE}
+install.packages("rstan")
+```
+Then, check that you can load the library by running
+```{r, eval = FALSE}
+library(rstan)
+```
+Because this package relies on being able to generate compiled `C++` code, you
+may run into some issues installing things. If you are having trouble:
+
+- Try looking at the detailed install guide given 
+  [here](https://github.com/stan-dev/rstan/wiki/RStan-Getting-Started). Pay
+  attention, in particular, to the section "Configuring the C++ Toolchain."
+
+- I am happy to help to the extent I can, either after class or during office
+  hours.
+  
+I encourage you to run the examples given at the [getting started
+page](https://github.com/stan-dev/rstan/wiki/RStan-Getting-Started) to
+familiarize yourself with how to fit `Stan` models before we actually use them.
+
+## Review of Bayesian Inference in Simple Conjugate Families
+
+A lot of work can be done with Bayesian methods using relatively simple
+parametric families. We begin by reviewing Bayesian inference in these families.
+
+:::{.exercise #notes-1-beta}
+  Suppose $X_1, \ldots, X_N$ are iid Bernoulli random variables with success
+  probability $p$ (i.e., the $X_i$'s are the reslt of flipping a biased coin
+  with probability of heads $p$). Suppose that $p$ is given a
+  $\Beta(\alpha, \beta)$ prior distribution, having density
+  $$
+    \pi(p) 
+    = \frac{\Gamma(\alpha + \beta)}{\Gamma(\alpha) \Gamma(\beta)} \,
+      p^{\alpha - 1} \, (1 - p)^{\beta - 1} \, I(0 \le p \le 1).
+  $$
+  Derive the posterior of $[p \mid X_1, \ldots, X_N]$.
+:::
+
+:::{.exercise #notes-1-dirichlet}
+  Suppose $X_1, \ldots, X_N$ are iid categorical random variables taking values
+  in $\{1,\ldots,K\}$ with probabilities $p = (p_1, \ldots, p_K)$ respectively;
+  the likelihood of this model is 
+  $p \sim \Dirichlet(\alpha_1, \ldots, \alpha_K)$
+  which has density
+$$
+  \pi(p) = 
+    \frac{\Gamma(\sum_k \alpha_k)}{\prod_k \Gamma(\alpha_k)} \,
+    \prod_{k = 1}^K p_k^{\alpha_k - 1},
+$$
+  on the _simplex_ $\mathbb S_{K-1} = \{p : p_k \ge 0, \sum_k p_k = 1\}$; this
+  is a density on $\Reals^{K - 1}$ with $p_K \equiv 1 - \sum_{k=1}^{K-1} p_k$.
+  Find the posterior distribution of $[p \mid X_1, \ldots, X_N]$ (it may be
+  helpful to define $n_k = \sum_{i = 1}^N I(X_i = k)$).
+:::
+
+
+:::{.exercise}
+  We say that $X$ has a _gamma_ distribution if $X$ has density
+  \begin{align*}
+    \frac{\beta^\alpha}{\Gamma(\alpha)} \, 
+    x^{\alpha - 1} \, 
+    e^{-\beta x} \, I(x > 0),
+  \end{align*}
+  and we write $X \sim \Gam(\alpha, \beta)$. Suppose that $X \sim \Gam(\alpha,
+  b)$ and $Y \sim \Gam(\beta,b)$ and that $X$ is independent of $Y$.
+  
+  a. Let $W = X + Y$ and $Z = X / (X + Y)$. Show that $W$ and $Z$ are
+     independent with $W \sim \Gam(\alpha + \beta, b)$ and 
+     $Z \sim \Beta(\alpha, \beta)$. 
+     
+  b. Suppose that we have access to a random number generator (RNG) capable
+     of producing independent $\Gam(a,b)$ random variables (such as the 
+     `rgamma` function in `R`) for any choice of $a$ and $b$. Explain how to
+     use this RNG to sample $\Beta(\alpha,\beta)$ random variables.
+:::
+
+
+:::{.exercise #notes-1-normal-unknown-mean}
+  Suppose $X_1, \ldots, X_N \iid \Normal(\theta, \sigma_0^2)$ where $\sigma^2$
+  is _known_. Suppose that $\theta$ is given a normal prior distribution
+  with mean $m$ and variance $v$. Derive the posterior distribution of $[\theta
+  \mid X_1, \ldots, X_N]$.
+:::
+
+  
+
+:::{.exercise}
+  Suppose $X_1, \ldots, X_N \iid \Normal(\theta, \sigma^2)$ with $\theta$
+  _known_ but $\sigma^2$ _unknown_. Suppose that $\omega =
+  \sigma^{-2}$ has a $\Gam(\alpha,\beta)$ prior. Derive the posterior
+  distribution of $[\omega \mid X_1, \ldots, X_N]$.
+:::
+
+## Some Comments on Notation
+
+I have a (bad) habit of using notation without considering that students may not be aware of some of it. For your benefit, I'll give some of the usual notation that I might assume you know. It is standard notation that you are likely to see in papers, but maybe unlikely to have seen prior to this point.
+
+None of this really matters for the purpose of this course, but it is easier for me to just tell you what the notation means than stop myself from using it when I feel like it.
+
+- If $X$ and $Y$ are random variables depending on an index $N$ (often the sample size) then the statement $Y = o_P(X)$ means that $Y / X \to 0$ in probability as $N \to \infty$.  For example, the weak law of large numbers can be expressed compactly as
+$$
+  \frac{1}{N} \sum_i X_i = \mu + o_P(1)
+  \qquad \text{or possibly} \qquad
+  \sum_i X_i = N \mu + o_P(N).
+$$
+
+- The statement $Y = O_P(X)$ means that $Y / X$ is _bounded in probability_. This means that (i) for every $\epsilon > 0$ there (ii) exists a positive constant $K$ such that (iii) for sufficiently large $N$ we have $\Pr(|Y| \le K \, |X|) \ge 1- \epsilon$. An implication of the central limit theorem is that
+$$
+  \frac{1}{N} \sum_i X_i = \mu + O_P(N^{-1/2})
+$$
+because $N^{-1/2}(\bar X - \mu)$ converges in distribution to a normal distribution.
+
+- The theories of discrete and continuous variables are unified by the _measure theoretic approach to probability_, which we don't require you to know. Within this framework, the expected value of a random variable $X \sim F$ is written
+$$
+  \E(X) = \int x \ F(dx).
+$$
+When $X$ is continuous (or discrete) this quantity happens to be equal to
+$$
+  \int x \, f(x) \ dx \qquad \text{or} \qquad \sum_x x \, f(x),
+$$
+where $f(x)$ is the density (or mass) function of $X$. 
+
+    Because the discrete and continuous settings are effectively the same, I may write things like $\int x \, f(x) \ dx$ even when $X$ is discrete.
