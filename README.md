@@ -1,13 +1,13 @@
 Welcome! 
 
-This is a minimal example of a book based on R Markdown and **bookdown** (https://github.com/rstudio/bookdown). 
+This is GitHub repo where I am hosting lecture notes for SDS383D (Statistical Modeling II). The syllabus for this course is also hosted here as `Syllabus.pdf`. 
 
-This template provides a skeleton file structure that you can edit to create your book. 
+Students who want to can clone the repository and add solutions to exercises by opening up the relevant chapter and adding
 
-The contents inside the .Rmd files provide some pointers to help you get started, but feel free to also delete the content in each file and start fresh.
+    :::{.solution}
+    
+    Markdown code for my solution goes here.
+    
+    :::
 
-Additional resources:
-
-The **bookdown** book: https://bookdown.org/yihui/bookdown/
-
-The **bookdown** package reference site: https://pkgs.rstudio.com/bookdown
+Assuming that the student is using **RStudio** and has the appropriate packages installed, opening the .Rproj file and building the site should make a website with your solution added.
