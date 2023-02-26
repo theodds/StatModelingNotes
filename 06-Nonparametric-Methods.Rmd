@@ -1,0 +1,320 @@
+<!-- # Nonparametric Methods -->
+
+<!-- ## Outline -->
+
+<!-- - Introduction -->
+
+<!-- - Distribution Estimation -->
+
+<!--   - The empirical distribution -->
+<!--     - As the nonparametric MLE -->
+<!--   - The Dirichlet Process -->
+<!--     - As a prior on random effects -->
+<!--     - Adaptive shrinkage -->
+
+<!-- - Nonparametric Regression -->
+
+<!--   - Irregular problems and  bias-variance tradeoff: MLE is Useless -->
+<!--   - Curse of Dimensionality -->
+<!--   - Basis function expansions -->
+<!--     - Polynomial expansions -->
+<!--     - Natural cubic splines -->
+<!--     - Wavelets -->
+<!--     - Bayesian adaptive basis function expansions and BART -->
+<!--   - Smoothing Splines -->
+<!--   - Kernel Smoothing -->
+<!--     - Local linear smoothing -->
+<!--   - Gaussian process regression -->
+<!--     - Computation -->
+<!--   - Classification -->
+
+<!-- - Density Estimation -->
+
+<!--   - Histograms -->
+<!--     - The Bayesian histogram -->
+<!--   - Kernel density estimators: why they work -->
+<!--   - Dirichlet process mixture models -->
+<!--   - Undersmoothing -->
+
+<!-- ## Overview -->
+
+<!-- In this set of notes, we will shift attention to various models that are referred to (broadly) as _nonparametric_. Speaking roughly, a model $\mathcal F = \{f_\theta : \theta \in \Theta\}$ is "nonparametric" if an $f \in \mathcal F$ "could be anything." Of course, this is a vague statement, and in reality the meaning of what a "nonparametric method" or a "nonparametric model" is varies according to context and the whims of whoever is writing about the topic. A couple of examples include: -->
+
+<!-- 1. Suppose $Z_1, \ldots, Z_n \iid F_0$ where $F_0 \in \mathcal F$ and $\mathcal F$ is the set of all possible distributions on $\mathbb R$, and we want to estimate the distribution of $Z_i$. This is the problem of _nonparametric distribution estimation_. -->
+
+<!-- 1. Ditto the above problem, except now we want to estimate the density $f_0$ of $F_0$. This is a problem of _nonparametric density estimation_, with the class $\mathcal F$ consisting of all distributions on $\mathbb R$ that admit a density. -->
+
+<!-- 1. Suppose we have -->
+<!-- $$ -->
+<!--   Y_i = \mu(X_i) + \epsilon_i -->
+<!-- $$ -->
+<!-- where $\epsilon_i \iid \Normal(0, \sigma^2)$. We assume $\mu(x)$ is a function from $\mathbb R$ to $\mathbb R$. While this is probably more accurately referred to as _Gaussian semiparametric regression_, because $\mu(\cdot)$ is unrestricted some folks still think of this as a nonparametric problem. -->
+
+<!-- Nonparametric models can be contrasted with _parametric_ models (which you should already be familiar) and _semiparametric_ models. Semiparametric models are sort of halfway between parametric and nonparametric models: they have a _parametric component_ indexed by a finite-dimensional parameter $\theta$, and a _nonparametric component_ indexed by an infinite-dimensional parameter $\eta$, which is often viewed as a nuisance parameter. -->
+
+<!-- I have been asked, specifically, to write a set of notes on _Bayesian_ nonparametric methods in particular, with a focus on Bayesian additive regression trees (BART). That could be fun, but it's probably irresponsible to focus on BART (which is mostly a response surface estimation method) without giving a more comprehensive treatment of the topic of nonparametric models and estimation. So we will discuss a variety of nonparametric methods, with the notable exception of _permutation based_ methods. -->
+
+<!-- ## Bayesian Nonparametric Estimation of a Distribution -->
+
+<!-- The most general nonparametric estimation problem is the problem of estimating an arbitrary _distribution_ $F$; [[ADD MOTIVATION FOR CONSIDERING THIS PROBLEM]]. -->
+
+<!-- A straight-forward estimate of $F$ is the empirical distribution $\EmpF$, which you should be familiar with at this point, so we won't go into much detail here. Instead, we will focus primarily on addressing this problem within the Bayesian framework. The main tool here is the _Dirichlet process_ (and its variants). -->
+
+<!-- :::{.definition} -->
+
+<!-- __Dirichlet process:__ Let $\mathcal Z$ denote the sample space for some random variable $Z_1$, let $\alpha > 0$, and let $H$ be a probability distribution on $\mathcal Z$. We say that a _random probability measure_ (RPM) $F$ is a _Dirichlet process_ on $\mathcal Z$ if, for any _finite measurable partition_ $A_1, \ldots, A_k$ of $\mathcal Z$ we have -->
+<!-- $$ -->
+<!--   (F(A_1), \ldots, F(A_k)) -->
+<!--   \sim -->
+<!--   \Dirichlet\{\alpha \, H(A_1), \ldots, \alpha \, H(A_k)\}. -->
+<!-- $$ -->
+
+<!-- ::: -->
+
+<!-- The definition [[XXX]] is conceptually pleasant but can sometimes be difficult to work with and masks some of the more important properties of the Dirichlet process. An equivalent definition is given below, which is "constructive" in nature. -->
+
+<!-- :::{.definition} -->
+
+<!-- __Alternate definition of the Dirichlet Process:__ Let $\mathcal Z$ denote the sample space for some random variable $Z_1$, let $\alpha > 0$, and let $H$ be a probability distribution on $\mathcal Z$. We say that an RPM $F$ is a _Dirichlet process_ on $\mathcal Z$ if we can write -->
+<!-- $$ -->
+<!--   F(dz) = \sum_{k = 1}^\infty \omega_k \, \delta_{\theta_k}(dz) -->
+<!-- $$ -->
+<!-- where $\theta_k \iid H$ and the $\omega_k$'s follow the _Sethuramann stick-breaking construction_ -->
+<!-- $$ -->
+<!--   \omega_k = \omega'_k \prod_{j < k} (1 - \omega'_j) -->
+<!--   \qquad \text{where} \qquad -->
+<!--   \omega'_k \sim \Beta(1, \alpha). -->
+<!-- $$ -->
+<!-- The prior for $\omega = (\omega_1, \omega_2, \ldots)$ is called the _[[XXX]] distribution_ and we write $\omega \sim \text{GEM}(\alpha)$ to denote this. -->
+
+<!-- ::: -->
+
+<!-- __Why is this true?__ A rigorous proof of the fact that the two definitions above are equivalent is beyond our scope, but if you are curious as to how one might guess that this is true note that under the original definition of the Dirichlet process it is possible to show that -->
+<!-- $$ -->
+<!--   F(dz) \stackrel{d}{=} \omega_1' \, \delta_{\theta} + (1 - \omega_1') \, F(dz). -->
+<!-- $$ -->
+<!-- where $\omega_k' \iid \Beta(1, \alpha)$ (it's not beyond your abilities to prove this as a homework exercise, but we have better uses of our time). We can then basically repeatedly apply this to write -->
+<!-- $$ -->
+<!--   F(dz) = \sum_{k=1}^K \omega_k \, \delta_{\theta_k} + \left(\prod_{j = 1}^K (1 - \omega'_k)\right) \, F(dz).  -->
+<!-- $$ -->
+<!-- so that "letting $K \to \infty$" the first term goes to the Sethurmann stick-breaking construction, while the second term goes to $0$. This was basically Sethuramann's original reasoning, but it took a rather long time to publish the result, partially because getting all of the technical details correct is a bit tricky and, at the time, of unclear practical value. -->
+
+<!-- ### The Posterior Distribution for the Dirichlet Process -->
+
+<!-- Aside from its elegant definition, the reason BNP inference for a distribution revolves around the Dirichlet process is that it is _conjugate to iid sampling._ -->
+
+<!-- :::{.exercise} -->
+
+<!-- Suppose that $Z_1, \ldots, Z_N \iid F$ given $F$ and that $F \sim \DP(\alpha, H)$.  -->
+
+<!-- (a) Show that, for an arbitrary set $A$, we have -->
+<!-- $$ -->
+<!--   \E\{F(A)\} = H(A). -->
+<!-- $$ -->
+<!-- The distribution $H$ is referred to as the _prior mean_ of $F$; explain why this terminology makes sense. -->
+
+<!-- (b) Show that, for an arbitrary set $A$, we have -->
+<!-- $$ -->
+<!--   \Var\{F(A)\} = \frac{H(A) \, \{1 - H(A)}}{\alpha + 1}. -->
+<!-- $$ -->
+<!-- The parameter $\alpha$ is referred as the _concentration_ or _precision_ parameter; explain why this terminology makes sense. -->
+
+<!-- (a) Show that the posterior distribution of $[F \mid Z_1, \ldots, Z_N]$ is a Dirichlet process with updated paraemters -->
+<!-- $$ -->
+<!--   \alpha^\star = \alpha + N  -->
+<!--   \qquad \text{and} \qquad  -->
+<!--   H^\star = \frac{\alpha}{\alpha + N} \, H + \frac{N}{\alpha + N} \, \EmpF_N. -->
+<!-- $$ -->
+
+<!-- ::: -->
+
+<!-- :::{.exercise} -->
+
+<!-- Revist the problem [[XXX]] -->
+
+<!-- ::: -->
+
+<!-- ## Nonparametric Estimation of a Regression Function -->
+
+<!-- $$ -->
+<!--   Y_i = \mu(X_i) + \epsilon_i -->
+<!-- $$ -->
+
+<!-- ### The Curse of Dimensionality -->
+
+<!-- The parametric and nonparametric esimation problems are quite different in practice; in particular, nonparametric estimation usually _much more difficult_ than parametric estimation. -->
+
+<!-- One complication is the so-called _curse of dimensionality_. [[XXX]] -->
+
+<!-- ### Basis Function Expansions -->
+
+<!-- $$ -->
+<!-- \begin{aligned} -->
+<!--   Y_i = \beta_0 + \psi(X_i)^\top \beta + \epsilon_i, -->
+<!--   \qquad \E(\epsilon_i \mid X_i) = 0 -->
+<!-- \end{aligned} -->
+<!-- $$ -->
+
+<!-- ```{r, echo = FALSE, message=FALSE, fig.cap="A set of cubic spline basis functions."} -->
+<!-- plot_spline_basis <- function(num_basis) { -->
+<!--   require(splines) -->
+<!--   require(latex2exp) -->
+<!--   x <- seq(from = 0, to = 1, length = 500) -->
+<!--   knots <- quantile(x, probs = seq(.1, .9, length.out = num_basis + 2)) -->
+<!--   X <- ns(x, knots = knots, intercept = FALSE) -->
+
+<!--   plot(x, X[,1],  -->
+<!--     type = 'l',  -->
+<!--     ylim = c(0, max(X)),  -->
+<!--     xlab = 'x',  -->
+<!--     ylab = TeX("$\\psi_j(x)$") -->
+<!--   ) -->
+<!--   for(i in 2:num_basis) { -->
+<!--     lines(x, X[,i]) -->
+<!--   } -->
+<!-- } -->
+
+<!-- plot_spline_basis(10) -->
+<!-- ``` -->
+
+<!-- :::{.exercise} -->
+
+<!-- A particular type of basis function expansion takes $\psi(x) = (\psi_1(x), \ldots, \psi_L(x))$ to correspond to step functions: -->
+<!-- $$ -->
+<!--   \psi_\ell(x) -->
+<!--   = -->
+<!--   \begin{cases} -->
+<!--     1 \qquad & \mbox{if } x \in A_\ell, \\ -->
+<!--     0 \qquad & \mbox{otherwise}. -->
+<!--   \end{cases} -->
+<!-- $$ -->
+
+<!-- ::: -->
+
+<!-- ### Smoothing Splines -->
+
+<!-- An alternate to the basis function approach to estimating $\mu(x)$ is to use  -->
+
+<!-- ### Kernel Smoothing -->
+
+<!-- ### Bayesian Methods -->
+
+<!-- For the most part, the methods above have Bayesian analogs, and these methods typically have similar operating characteristics as the Frequentist solutions. For example, we could [[XXX: ADD MATERIAL ON BASIS FUNCTION EXPANSION]] -->
+
+<!-- [[MATERIAL ON GPs]] -->
+
+<!-- Rather than setting things up in terms of basis function expansions, it can make more sense to instead think about the parameter space for $\mu(\cdot)$ as a _function space_ $\mu \in \mathscr F$; examples of function spaces include -->
+
+<!-- - The space $\sC([0,1])$ of continuous functions on $[0,1]$. -->
+<!-- - The space $\sC^\alpha([0,1])$ of functions on $[0,1]$ that are twice-continuously differentiable. -->
+<!-- - The space $\mathscr L_2([0,1])$ of square-integrable functions (i.e., $\int_0^1 \mu(x)^2 \ dx< \infty$). -->
+
+<!-- A criteria for a prior to be "flexible" from this perspective is that the support of the prior $\Pi(d\mu)$ should have _large support_ in the sense that an arbitrary $\mu_0$ can be well-approximated by a sample from the prior; for example, we might ask that -->
+<!-- $$ -->
+<!--   \Pi(\sup_x |\mu_0(x) - \mu(x)| < \epsilon) > 0 -->
+<!-- $$ -->
+<!-- for all $\epsilon > 0$. -->
+
+<!-- A common choice of prior $\Pi(d\mu)$ that can accomplish these goals is a _Gaussian process_ prior. -->
+
+<!-- :::{.definition} -->
+
+<!-- Let $m : \mathcal X \to \mathbb R$ and $K: \mathcal X^2 \to \mathbb R$.  -->
+
+<!-- A random function $\mu : \mathcal X \to \mathbb R$ is said to be a _Gaussian process_ if, for any _finite_ set $D = \{x_1, \ldots x_D\}$ we have -->
+<!-- $$ -->
+<!--   \mu(\mathbf x) = -->
+<!--   \Normal\{m(\mathbf x), K(\mathbf x, \mathbf x)\} -->
+<!-- $$ -->
+<!-- where $\mathbf x = (x_1, \ldots, x_D)^\top$, $\mu(\mathbf x) = (\mu(x_1), \ldots, \mu(x_D))^\top$, $m(\mathbf x) = (m(x_1), \ldots, m(x_D))^\top$, and $K(\mathbf x, \mathbf x')$ is a covariance matrix with $(i,j)^{\text{th}}$ entry $K(x_i, x'_j)$. The function $K(\cdot, \cdot)$ is referred to as a _covariance function_. -->
+
+<!-- To denote this fact, we write $\mu \sim \GP(m, K)$. -->
+
+<!-- ::: -->
+
+<!-- (Note: not all functions $K(x,x')$ can be used for this purpose, as the definition requires that $K(\mathbf x, \mathbf x')$ always be a valid covariance matrix. The covariance function is also sometimes referred to as a _kernel_ function.) -->
+
+<!-- :::{.exercise} -->
+
+<!-- Suppose that $Y_i \stackrel{\text{indep}}{\sim} \Normal\{\mu(X_i), \sigma^2\}$ conditional on $\bX$ for $i = 1, \ldots, N$ and $\mu$. Let $\bX = (X_1, \ldots, X_N)$ and $\bY = (Y_1, \ldots, Y_N)$. -->
+
+<!-- Show that the posterior distribution of $\mu$ is given by -->
+<!-- $$ -->
+<!--   [\mu \mid \bX, \bY, \sigma^2] -->
+<!--   \sim -->
+<!--   \GP(m^\star, K^\star) -->
+<!-- $$ -->
+<!-- where -->
+<!-- $$ -->
+<!-- \begin{aligned} -->
+<!--   m^\star(x) &=  -->
+<!--     m(x) +  -->
+<!--       K(x, \bX) \{K(\bX, \bX) +  -->
+<!--       \sigma^2 \Identity\}^{-1} \{\mathbf Y - m(\mathbf X)\} \\ -->
+<!--   K^\star(x, x') &= K(x, x') - [[XXX]] -->
+<!-- \end{aligned} -->
+<!-- $$ -->
+
+<!-- ::: -->
+
+<!-- :::{.exercise} -->
+
+<!-- A common choice of covariance function for a Gaussian process is the _squared exponential kernel_ -->
+<!-- $$ -->
+<!--   K(x, x') -->
+<!--   = -->
+<!--   \sigma^2_\mu \exp\left(-\rho \sum_{j=1}^P (x_j - x'_j)^2\right). -->
+<!-- $$ -->
+
+<!-- Code for generating some approximate samples from this prior distribution is given below. -->
+
+<!-- [[ADD CODE HERE]] -->
+
+<!-- a. Suppose that two points $x$ and $x'$ are identical except that $x_j \ne x'_j$ for some $j$. What is the correlation between $\mu(x)$ and $\mu(x')$ as a function of $(\sigma^2_\mu, \rho)$? -->
+
+<!-- a. [[ADD A SECOND PART HERE]] -->
+
+<!-- ::: -->
+
+<!-- The main challenge with using Gaussian processes is that they require the computation of $\{K(\bX, \bX) + \sigma^2\, \Identity\}^{-1}(\bY - m(\bX))$. Ostensibly, this requires computing the inverse of an $N \times N$ matrix, which is a very expensive operation, having computational complexity that scales like $N^3$ and memory requirement that scales like $N^2$; so, for example, if you have $10,000$ observations, you expect to need $100,000,000$ units of storage available and to wait $1,000,000,000,000$ units of time to compute the posterior. Needless to say, this is very expensive compared to (say) computing the least squares estimator $\widehat \beta$, which can be done with constant storage and compute time that scales with $N$. -->
+
+<!-- Because of this, there is a cottage industry focused no developing methods for fast inference with Gaussian processes - the two main strategies are to either (i) design $K(\mathbf x, \mathbf x')$ so that required computations can be performed quickly or (ii) approximate the inverse. -->
+
+
+
+<!-- ## Nonparametric Estimation of a Density -->
+
+<!-- ### Kernel Density Estimation -->
+
+<!-- ### Mixture Models -->
+
+<!-- ### Bayesian Methods -->
+
+<!-- The Dirichlet process is unfortunately not adequate for the purpose of modeling a density because it assigns prior probability $1$ to discrete distributions. Instead, most Bayesian approaches to density estimation are based on mixture models like [[XXX]], with a Dirichlet process used to model the latent variables; that is, we set -->
+<!-- $$ -->
+<!-- \begin{aligned} -->
+<!--   [Y_i \mid \bm\theta F] &\iid p_{\theta_i}(y), \\ -->
+<!--   [\theta_i \mid F] &\iid G, \\ -->
+<!--   G &\sim \DP(\alpha, H) -->
+<!-- \end{aligned} -->
+<!-- $$ -->
+<!-- Or, equivalently -->
+<!-- $$ -->
+<!--   f_G(y)  -->
+<!--   = \int p_\theta(y) \ G(d\theta)  -->
+<!--   = \sum_{k = 1}^\infty \omega_k \, p_{\theta_k}(y). -->
+<!-- $$ -->
+
+<!-- [[MORE STUFF HERE]] -->
+
+<!-- :::{.exercise} -->
+
+<!-- Use the package `dirichletprocess` to fit a Dirichlet process mixture model to the `galaxy` dataset. Then, plot the following quantities together: -->
+
+<!-- - The posterior mean of the density along a grid of 1000 points extending from _xxx_ to _xxx_. -->
+
+<!-- - A 95% credible bands for the density using the same grid. -->
+
+<!-- ::: -->
+
+

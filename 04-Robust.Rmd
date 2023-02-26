@@ -35,7 +35,7 @@ $$
 $$
 where $W$ depends on the means $\mu_i$ and the weights $\omega_i$, but notably not on $\phi$. If the self-imposed value $\phi = 1$ is too small, however, we will end up underestimating $\Var(\widehat\beta)$. This implies that failure to account for overdispersion has a material consequence: we will end up _underestimating our uncertainty in $\beta$_! This will cause (for example) our confidence intervals to not have nominal coverage levels and our hypothesis tests to have higher than nominal error rates.
 
-:::{.exercise}
+:::{.exercise #notes-robust-ticks}
 
 We examine a dataset described by Elston et al. (2001, _Parisitology_) which contains measures of the number of ticks on Red grouse chicks (a ground-nesting species of birds). Chicks were captured, the number of ticks were counted, and then the chicks were released. Interest lies in the relationship between `HEIGHT` - the height above sea level at which the chick was caught - and the number of ticks the chicks had, as well as whether this relationship varies by year. This dataset can be loaded in `R` by running the code
 ```{r, eval = FALSE}

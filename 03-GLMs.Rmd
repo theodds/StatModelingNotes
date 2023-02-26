@@ -84,7 +84,7 @@ where the coefficients $\omega_1, \ldots, \omega_N$ are known. This is referrred
 $$
   g(\mu_i) = x_i^\top\beta
 $$
-where $\mu_i = \E(Y_i \mid \theta_i, \phi / \omega_i)$. This is referred to as the _systematic component_ of the model. The term $\eta_i^\top\beta$ is known as the _linear predictor_.
+where $\mu_i = \E(Y_i \mid \theta_i, \phi / \omega_i)$. This is referred to as the _systematic component_ of the model. The term $\eta_i = x_i^\top\beta$ is known as the _linear predictor_.
 
 :::
 
@@ -161,11 +161,9 @@ Argue (informally) that there exists an inverse function for $b'(\theta)$ provid
 
 :::{.exercise}
 
-To convince yourself of the correctness of Exercise \@ref(exr:notes-glm-moments), use the results too compute the mean and variance of the $\Normal(\mu, \sigma^2)$ and $\Gam(\alpha, \beta)$ distributions.
+To convince yourself of the correctness of Exercise \@ref(exr:notes-glm-moments), use the results to compute the mean and variance of the $\Normal(\mu, \sigma^2)$ and $\Gam(\alpha, \beta)$ distributions.
 
 :::
-
-xxx
 
 :::{.exercise #canonical}
 
