@@ -258,8 +258,8 @@ fit_oneway_anova <- function(y, treatment,
   ##   num_thin: the thinning interval of the chain
   ##
   ## Your code here...
-  return(list(theta = theta_samples, mu = mu_samples,
-              sigma = sigma_samples, tau = tau_samples))
+  return(list(theta = theta_samples, mu = mu_samples, # nolint
+              sigma = sigma_samples, tau = tau_samples)) # nolint
 }
 ```
 
@@ -305,7 +305,7 @@ $$
 ```{r, eval = FALSE}
 fit_beta <- function(y, n, num_warmup, num_save, num_thin) {
   ## Your code here ...
-  return(your_fitted_model)
+  return(your_fitted_model) # nolint
 }
 ```
 

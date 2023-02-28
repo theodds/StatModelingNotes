@@ -37,6 +37,7 @@ header-includes: |
  \newcommand{\iid}{\stackrel{\text{iid}}{\sim}}
  \newcommand{\indep}{\stackrel{\text{indep}}{\sim}}
  \newcommand{\logit}{\operatorname{logit}}
+ \newcommand{\MSE}{\operatorname{MSE}}
  \newcommand{\muhat}{\widehat\mu}
  \newcommand{\Odds}{\operatorname{Odds}}
  \newcommand{\OFisher}{\mathcal J}
