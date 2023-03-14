@@ -98,7 +98,7 @@ a. Let $M$ be the number of observations in a sample of size $N$ that fall withi
 
 b. Suppose we expand $f(z)$ in a second-order Taylor series about $0$:
 $$
-  f(z) = f(0) + f'(0) z + \frac{1}{2} f''(0) z^2 + O(z^3).
+  f(z) \approx f(0) + f'(0) \, z + \frac{1}{2} f''(0) \, z^2.
 $$
 Use this, together with the bias-variance decomposition, to show that
 $$
@@ -126,7 +126,7 @@ $$
   =
   \sum_{i=1}^N w(X_i, x^\star) \, Y_i
 $$
-    for any $x^\star$. Inspect the weighting function you derived. Briefly describe your understanding of how the reslting smoother behaves, compared with the smoother that arises from an alternate form of the weight function $w(X_i, x^\star)$:
+    for any $x^\star$. Inspect the weighting function you derived. Briefly describe your understanding of how the resulting smoother behaves, compared with the smoother that arises from an alternate form of the weight function $w(X_i, x^\star)$:
 $$
   w_K(X_i, x^\star) = 
   \begin{cases}
@@ -167,6 +167,62 @@ $$
 
 :::
 
+:::{.solution}
+
+xxx
+
+a. Assume for simplicity that $\sum_i X_i^2 = 1$. Then it is easy to show that the weighting function is
+$$
+  \sum_i (x^\star \cdot X_i) \, Y_i,
+$$
+i.e., the weighting function just multiplies $X_i$ by $x^\star$. Effectively, this weights $Y_i$ largely if $X_i$ is _large in magnitude_, with a positive weight if $x^\star$ and $X_i$ have the same sign and a negative weight otherwise. Hence, observation $i$ can have a weight that is large even if $X_i$ is very far away from $x^\star$. On the other hand, the $K$-nearest neighbors weighting function only assigns positive weight to observations such that $x^\star$ is _close_ to $X_i$.
+
+b. Let's use the Gaussian kernel, with weights proportional to $w(x^\star, X_i) = \frac{1}{h} \, \phi\left(\frac{x^\star - X_i}{h}\right).
+```{r}
+tony_ksmooth <- function(x, x_test, y, h) {
+  x_c <- x - mean(x)
+  x_test_c <- x_test - mean(x)
+  y_c <- y - mean(y)
+  n_test <- length(x_test)
+  
+  out <- numeric(n_test) 
+  for(i in 1:n_test) {
+    weights <- dnorm(x_test_c[i], x_c, h)
+    weights <- weights / sum(weights)
+    out[i] <- sum(weights * y)
+  }
+  
+  out <- out + mean(y)
+  attr(out, "weights") <- weights
+  return(out)
+}
+
+x <- seq(from = 0, to = 1, length = 200)
+y <- sin(3.5 * pi * x) + 0.1 * rnorm(length(x))
+
+pal <- scales::viridis_pal()(10)
+
+
+plot(x,y)
+add_line <- function(h, ...) {
+  y_hat <- tony_ksmooth(x, x, y, h)
+  lines(x, y_hat, ...)
+}
+
+add_line(1, col = pal[1], lwd = 2)
+add_line(0.5, col = pal[2], lwd = 2)
+add_line(0.2, col = pal[3], lwd = 2)
+add_line(0.1, col = pal[4], lwd = 2)
+add_line(0.05, col = pal[5], lwd = 2)
+add_line(0.02, col = pal[6], lwd = 2)
+add_line(0.01, col = pal[7], lwd = 2)
+add_line(0.005, col = pal[8], lwd = 2)
+add_line(0.002, col = pal[9], lwd = 2)
+# add_line(0.001, col = pal[10])
+```
+
+:::
+
 ### Cross Validation
 
 :::{.exercise}
@@ -187,25 +243,177 @@ $$
 $$
 where $\widehat{Y}_{i}^{(-i)}$ is the predicted value of $Y_i$ obtained by omitting the $i^{\text{th}}$ pair $(X_i, Y_i)$ and fitting the model to the training data set of size $N - 1$.^[The intuition here is straightforward: for each possible choice of $h$, you have to predict each data point using all the others.  The bandwidth that with the lowest prediction error is the "best" choice by the LOOCV criterion.] This $\widehat{Y}_{i}^{(-i)}$ is contingent upon a particular bandwidth, and is obviously a function of $X_i$, but these dependencies are suppressed for ease of notation. This error metric looks expensive to compute: for each value of $h$, and for each data point to be held out, it seems as though you must fit a whole nonlinear regression model. But happily, there's a short-cut!
 
-    Observe that for a linear smoother, we can write the whole vector of fitted values as $\widehat{Y} = H Y$, where $H$ is called the smoothing matrix (or "hat matrix") and $Y$ is the vector of observed outcomes. Deduce that, for any linear smoother,
+   Observe that for a linear smoother, we can write the whole vector of fitted values as $\widehat{Y} = H Y$, where $H$ is called the smoothing matrix (or "hat matrix") and $Y$ is the vector of observed outcomes. Deduce that, for any linear smoother,
 $$
 \mbox{LOOCV} = \sum_{i=1}^N \left( \frac{Y_i - \widehat{Y}_{i} } {1-H_{ii}} \right)^2 \, .
 $$
 
-    Hint: observe that for any matrix A whose rows\footnote{Remember that by default all vectors are column vectors. So when we write $a_i$, we mean the $i$th row of $A$ \emph{considered as a column vector}.  So as a row vector, it's $a_i^\top$.} are $a_i^\top, i = 1, \ldots N$, we have
-$$
-A^\top A = \sum_{i=1}^N a_i a_i^\top
-$$
-    Therefore, if we let $\bX_{(-i)}$ be the original feature matrix with the $i$th row $X_i^\top$ removed, we have
-$$
-\bX_{(-i)}^\top \bX_{(-i)} = \sum_{\ell \neq i} X_i X_i^\top = \sum_{\ell=1}^N X_\ell X_\ell^\top  - X_i X_i^\top = \bX^\top \bX - X_i X_i^\top
-$$
-    This hint is useful because computing $\widehat{Y}_{i}^{(-i)}$ requires inverting $\bX_{(-i)}^\top \bX_{(-i)}$.  This result, combined with the [Sherman-Morrison formula](https://en.wikipedia.org/wiki/Sherman%E2%80%93Morrison_formula), provides a path to do so, and ultimately to prove the leave-one-out lemma.  
-
-    Like I said, proving this lemma is optional. But consider it a nice linear algebra exercise to try to prove it yourself.  However, you should use it for the following part...
+   _Hint:_ For simplicity, you may assume that the weights $w(X_i, X_j)$ are such that $\sum_j w(X_i, X_j) = 1$, and that the held-out prediction is also formed by normalizing the weights; in this case, to normalize the weights we would use the new weights $w^\star(X_i, X_j) = \frac{w(X_i, X_j)}{1 - w(X_i, X_i)}$ so that $\sum_{j \ne i} w^\star(X_i, X_j) = 1$; alternatively, we could define the weights to include observation $i$ by writing $w^\star(X_i, X_j) = \frac{w(X_i, X_j) \, \{1 - I(i = j)\}}{1 - w(X_i, X_i)}$. Using this, you should be able to show directly that $Y_i - \widehat Y^{(-i)}_i = \sum_j w^\star(X_i, X_j) \, (Y_i - Y_j) = \frac{Y_i - \widehat Y_i}{1 - w(X_i, X_i)}$.
 
 d. Use the leave-one-out lemma to revisit the examples you simulated in Part B, using leave-one-out cross validation to select $h$ in each case.  Because of the leave-one-out lemma, you won't need to actually refit the model N times!
 
+:::
+
+:::{.solution}
+
+xxx
+
+a. Using the `tony_ksmooth` function we have
+```{r}
+tony_ksmooth_cv <- function(x, x_test, y, y_test, h_grid) {
+  grid_size <- length(h_grid)
+  mu_test <- matrix(nrow = grid_size, ncol = length(x_test))
+
+  rmse <- function(a,b) sqrt(mean((a-b)^2))
+  prediction_error <- numeric(grid_size)
+
+  for(i in 1:grid_size) {
+    mu_test[i,]         <- tony_ksmooth(x, x_test, y, h_grid[i])
+    prediction_error[i] <- rmse(mu_test[i,], y_test)
+  }
+
+  out <- list(
+    mu_hat_matrix = mu_test,
+    prediction_error = prediction_error,
+    h_opt = h_grid[which.min(prediction_error)],
+    mu_hat_cv = mu_test[which.min(prediction_error), ]
+  )
+
+  return(out)
+}
+```
+
+b. For simplicity, let's use some trigonometric functions. Specifically, let's take
+
+   1. Low-noise, not-wiggly: $\sin(2\pi x)$ and $\sigma = 0.1$.
+   
+   2. Low-noise, wiggly: $\sin(8\pi x)$ and $\sigma = 0.1$.
+   
+   3. High-noise, not-wiggly: $\sin(2\pi x)$ and $\sigma = 1$.
+   
+   4. High-noise, wiggly: $\sin(8 \pi x)$ and $\sigma = 1$.
+   
+   The following code using `tony_ksmooth_cv` to fit the model.
+   ```{r}
+   gen_data <- function(h_grid, N = 500, low_noise = TRUE, wiggly = TRUE) {
+     x <- seq(from = 0, to = 1, length = N)
+     x_test <- x
+     sigma <- ifelse(low_noise, 1, 0.1)
+     freq <- ifelse(wiggly, 8 * pi, 2 * pi)
+     y <- sigma * rnorm(N) + sin(freq * x)
+     y_test <- sigma * rnorm(N) + sin(freq * x_test)
+     
+     fitted_data <- tony_ksmooth_cv(x, x_test, y, y_test, h_grid)
+     
+     fitted_data$training <- data.frame(x = x, y = y)
+     fitted_data$testing <- data.frame(x = x_test, y = y_test)
+     
+     return(fitted_data)
+   }
+   
+   h_grid <- c(0.002, 0.005, 0.01, 0.02, 0.05, 0.1, 0.2, 0.5, 1)
+   
+   set.seed(digest::digest2int("wiggly"))
+   wiggly_low     <- gen_data(h_grid, low_noise = TRUE, wiggly = TRUE)
+   wiggly_high    <- gen_data(h_grid, low_noise = FALSE, wiggly = TRUE)
+   notwiggly_low  <- gen_data(h_grid, low_noise = TRUE, wiggly = FALSE)
+   notwiggly_high <- gen_data(h_grid, low_noise = FALSE, wiggly = FALSE)
+   ```
+   Next, let's plot the output.
+   ```{r}
+   plot_fit <- function(fit) {
+     library(ggplot2)
+     ggplot(fit$testing, aes(x = x, y = y)) + 
+       geom_point() +
+       geom_line(aes(x = x, y = fit$mu_hat_cv), size = 2, color = "#E69F00") +
+       theme_bw()
+   }
+   
+   plot_fit(wiggly_low)
+   plot_fit(wiggly_high)
+   plot_fit(notwiggly_low)
+   plot_fit(notwiggly_high)
+   ```
+  
+   The bandwidth looks good to me in each case!
+   
+c. Use the hint to solve the problem directly.
+
+d. We can redo the problem as follows:
+    ```{r}
+    tony_ksmooth_loo <- function(x, y, h) {
+     x_c <- x - mean(x)
+     y_c <- y - mean(y)
+     n <- length(x_c)
+     
+     weights <- matrix(nrow = n, ncol = n)
+     out <- numeric(n)
+     loo_error <- numeric(n)
+     for(i in 1:n) {
+       weights[i,] <- dnorm(x_c[i], x_c, h)
+       weights[i,] <- weights[i,] / sum(weights[i,])
+       out[i] <- sum(weights[i,] * y)
+     }
+     
+     loo_res <- (y - out) / (1 - diag(weights))
+     loo_rmse <- sqrt(mean(loo_res^2))
+     
+     return(list(mu_hat = out, loo_rmse = loo_rmse))
+    }
+    
+    tony_ksmooth_loo_cv <- function(x, y, h_grid) {
+     grid_size <- length(h_grid)
+     prediction_error <- numeric(grid_size)
+     
+     for(i in 1:grid_size) {
+       out <- tony_ksmooth_loo(x, y, h_grid[i])
+       prediction_error[i] <- out$loo_rmse
+     }
+     
+     h_opt <- h_grid[which.min(prediction_error)]
+     out <- tony_ksmooth_loo(x, y, h_opt)
+     
+     return(list(
+       mu_hat = out$mu_hat, 
+       prediction_error = prediction_error, 
+       h_opt = h_opt
+     ))
+    }
+    
+    gen_data_loo <- function(h_grid, N = 500, low_noise = TRUE, wiggly = TRUE) {
+     x <- seq(from = 0, to = 1, length = N)
+     sigma <- ifelse(low_noise, 1, 0.1)
+     freq <- ifelse(wiggly, 8 * pi, 2 * pi)
+     y <- sigma * rnorm(N) + sin(freq * x)
+     
+     fitted_data <- tony_ksmooth_loo_cv(x, y, h_grid)
+     
+     fitted_data$training <- data.frame(x = x, y = y)
+     
+     return(fitted_data)
+    }
+    
+    h_grid <- c(0.002, 0.005, 0.01, 0.02, 0.05, 0.1, 0.2, 0.5, 1)
+    
+    set.seed(digest::digest2int("wiggly"))
+    wiggly_low_loo     <- gen_data_loo(h_grid, low_noise = TRUE, wiggly = TRUE)
+    wiggly_high_loo    <- gen_data_loo(h_grid, low_noise = FALSE, wiggly = TRUE)
+    notwiggly_low_loo  <- gen_data_loo(h_grid, low_noise = TRUE, wiggly = FALSE)
+    notwiggly_high_loo <- gen_data_loo(h_grid, low_noise = FALSE, wiggly = FALSE)
+    
+    plot_fit_loo <- function(fit) {
+     library(ggplot2)
+     ggplot(fit$training, aes(x = x, y = y)) + 
+       geom_point() +
+       geom_line(aes(x = x, y = fit$mu_hat), size = 2, color = "#E69F00") +
+       theme_bw()
+    }
+    
+    plot_fit_loo(wiggly_low_loo)
+    plot_fit_loo(wiggly_high_loo)
+    plot_fit_loo(notwiggly_low_loo)
+    plot_fit_loo(notwiggly_high_loo)
+    ```
 :::
 
 ### Local Polynomial Regression
@@ -221,9 +429,7 @@ $$
 $$
 then the solution is exactly the kernel-regression estimator.
 
-:::{.exercise}
-
-a. A natural generalization of the locally constant regression is local polynomial regression. For points $u$ in a neighborhood of the target point $x$, define the polynomial
+A natural generalization of the locally constant regression is local polynomial regression. For points $u$ in a neighborhood of the target point $x$, define the polynomial
 $$
   g_{x}(u; a) = a_0 + \sum_{k=1}^D a_k \, (u-x)^k
 $$
@@ -233,43 +439,50 @@ $$
     \arg \min_{\mathbb R^{D+1}} 
     \sum_{i=1}^N w_i \left\{ Y_i - g_{x}(X_i; a)  \right\}^2 \, ,
 $$
-where $w_i \equiv w(X_i, x)$ are the kernel weights defined just above, normalized to sum to one.^[We are fitting a different polynomial function for every possible choice of $x$.  Thus $\widehat{a}$ depends on the target point $x$, but we have suppressed this dependence for notational ease.] Derive a concise (matrix) form of the weight vector $\widehat{a}$, and by extension, the local function estimate $\widehat{\mu}(x)$ at the target value $x$.^[Observe that at the target point $x$, $g_x(u = x; a) = a_0$.  That is, only the constant term appears.  But this is not the same thing as fitting only a constant term!] Life will be easier if you define the matrix $R_x$ whose $(i,j)^{\text{th}}$ entry is $(X_i - x)^j$, and remember that (weighted) polynomial regression is the same thing as (weighted) linear regression with a polynomial basis.
+where $w_i \equiv w(X_i, x)$ are the kernel weights defined just above, normalized to sum to one.^[We are fitting a different polynomial function for every possible choice of $x$.  Thus $\widehat{a}$ depends on the target point $x$, but we have suppressed this dependence for notational ease.] For some pretty pictures illustrating the basic point, [see this link](http://rafalab.dfci.harvard.edu/dsbook/smoothing.html#local-weighted-regression-loess).
 
-    Note: If you get bogged down doing the general polynomial case, just try the linear case.
+A particular example of a local polynomial method is the _loess_ method implemented in the `loess` function. This method uses the _tricube_ weighting function
+$$
+w(x, X_i) = \left\{1 - \left(\frac{|x - X_i|}{h_\alpha(x)}\right)^3\right\}_+^3
+$$
+where $h_\alpha(x) = \max_{j : X_j \in B_x}\{|x - X_j|\}$ and $B_x$ is a neighborhood of $x$ chosen so to include $100\alpha\%$ of the data; for example, if $\alpha = 0.1$ then the bandwidth will be chosen using the $10\%$ of the observations closest to $x$. This choice of bandwidth is data-adaptive in that if there are many observations near $x$ then we will use a small bandwidth, while if there are only a few observations near $x$ then we will use a large bandwidth. The `loess` function can be used to fit local polynomial models by specifying the `degree` argument: `degree = 0`, `1`, or `2` corresponds to locally constant, linear, and quadratic fits respectively.
 
-b. From this, conclude that for the special case of a local linear estimator ($D = 1$), we can write $\widehat\mu(x)$ as a linear smoother of the form
-$$
-  \widehat\mu(x) 
-  = \frac{\sum_{i=1}^N w_i(x) \, Y_i}
-         {\sum_{i = 1}^N w_i(x)},
-$$
-where the unnormalized weights are
-$$
-\begin{aligned}
-  w_i(x) &= K \left( \frac{x-X_i}{h} \right) \left\{  s_2(x) - (X_i-x) s_1(x) \right\}\\
-  s_j(x) &= \sum_{i=1}^N K \left( \frac{x-X_i}{h} \right) (X_i-x)^j \, .
-\end{aligned}
-$$
+:::{.exercise}
 
-c. Suppose that the residuals have constant variance $\sigma^2$ (that is, the spread of the residuals does not depend on $x$).  Derive the mean and variance of the sampling distribution for the local polynomial estimate $\widehat{\mu}(x)$ at some arbitrary point $x$.  Note: the random variable $\widehat{\mu}(x)$ is just a scalar quantity at $x$, not the whole function.
+In this exercise we will consider local polynomial methods when (potentially) we are concerned that the errors in the model $Y_i = r(X_i) + \epsilon_i$ do not have constant variance. 
 
-d. We don't know the residual variance, but we can estimate it.  A basic fact is that if $X$ is a random vector with mean $\mu$ and covariance matrix $\Sigma$, then for any symmetric matrix $Q$ of appropriate dimension, the quadratic form $X^\top Q X$ has expectation
+a. Suppose that the $\epsilon_i$'s have constant variance $\sigma^2$ (that is, the spread of the residuals does not depend on $x$).  Derive the mean and variance of the sampling distribution for the locally constant linear smoother. Note: the random variable $\widehat{\mu}(x)$ is just a scalar quantity at $x$, not the whole function.
+
+b. We don't know the residual variance, but we can estimate it.  A basic fact is that if $X$ is a random vector with mean $\mu$ and covariance matrix $\Sigma$, then for any symmetric matrix $Q$ of appropriate dimension, the quadratic form $X^\top Q X$ has expectation
 $$
 E(X^\top Q X) = \mbox{tr}(Q \Sigma) + \mu^\top Q \mu \, .
 $$
-Write the vector of residuals as $R = Y - \widehat{Y} = Y - HY$, where $H$ is the smoothing matrix.  Compute the expected value of the estimator
+Consider an arbitrary linear smoother (i.e., one with $\widehat Y = HY$ for some smoothing matrix $H$). Write the vector of residuals as $R = Y - \widehat{Y} = Y - HY$, where $H$ is the smoothing matrix.  Compute the expected value of the estimator
 $$
 \widehat{\sigma}^2 = \frac{\|r\|^2}{n - 2\mbox{tr}(H) + \mbox{tr}(H^\top H)} \, ,
 $$
-and simplify things as much as possible.  Roughly under what circumstances will this estimator be nearly unbiased for large $n$?  Note: the quantity $2\mbox{tr}(H) - \mbox{tr}(H^\top H)$ is often referred to as the "effective degrees of freedom'" in such problems.
+and simplify things as much as possible.  Roughly under what circumstances will this estimator be nearly unbiased for large $N$?  Note: the quantity $2\mbox{tr}(H) - \mbox{tr}(H^\top H)$ is often referred to as the "effective degrees of freedom" in such problems.
 
-e. Write code that fits the local linear estimator using a Gaussian kernel for a specified choice of bandwidth $h$. Then load the data in ``utilities.csv'' into `R`.^[On the class GitHub site.] This data set shows the monthly gas bill (in dollars) for a single-family home in Minnesota, along with the average temperature in that month (in degrees F), and the number of billing days in that month.  Let $Y_i$ be the average daily gas bill in a given month (i.e.~dollars divided by billing days), and let $X_i$ be the average temperature. Fit $Y_i$ versus $X_i$ using local linear regression and some choice of kernel.  Choose a bandwidth by leave-one-out cross-validation.
+c. Load the `utilities.csv` data into `R`.^[On the class GitHub site] This data set shows the monthly gas bill (in dollars) for a single-family home in Minnesota, along with the average temperature in that month (in degrees F), and the number of billing days in that month.  Let $Y_i$ be the average daily gas bill in a given month (i.e. dollars divided by billing days), and let $X_i$ be the average temperature. Fit $Y_i$ versus $X_i$ using `loess`. Use leave-one-out cross-validation to choose the bandwidth.
+
+:::
+
+<!--
+
+:::{.exercise}
+
+d. 
+W
+
+e. Write code that fits the local linear estimator using a Gaussian kernel for a specified choice of bandwidth $h$. Then load the data in `utilities.csv` into `R`.^[On the class GitHub site.] 
 
 f. Inspect the residuals from the model you just fit.  Does the assumption of constant variance (homoskedasticity) look reasonable?  If not, do you have any suggestion for fixing it?
 
 g. Put everything together to construct an approximate point-wise 95\% confidence interval for the local linear model (using your chosen bandwidth) for the value of the function at each of the observed points $X_i$ for the utilities data.  Plot these confidence bands, along with the estimated function, on top of a scatter plot of the data.^[It's fine to use Gaussian critical values for your confidence set.]
 
 :::
+
+-->
 
 ## Nonparametric Bayesian Smoothing Via Gaussian Processes
 
@@ -308,11 +521,154 @@ To denote this fact, we write $\mu \sim \GP(m, K)$.
 
 (Note: not all functions $K(x,x')$ can be used for this purpose, as the definition requires that $K(\mathbf x, \mathbf x')$ always be a valid covariance matrix. The covariance function is also sometimes referred to as a _kernel_ function.)
 
+### Aside: Review of the Multivariate Normal Distribution
+
+The multivariate normal (or multivariate Gaussian) distribution has several equivalent definitions. We adopt the following definition.
+
+:::{#mvn .definition name="Multivariate Normal Distribution"}
+We say that $X$ has an _$n$-dimensional multivariate normal_ distribution with mean vector $\mu$ and covariance matrix $\Sigma$ if, or every $\lambda \in \Reals^n$, we have $\lambda^\top X \sim \Normal(\lambda^\top \mu, \lambda^\top \Sigma \lambda)$. We write $X \sim \Normal(\mu, \Sigma)$ to denote this fact; this distribution exists for every $\mu \in \mathbb R^n$ and every symmetric matrix $\Sigma \in \mathbb R^{n \times n}$ such that $\lambda^\top \Sigma \lambda \ge 0$ for all $\lambda \in \mathbb R^n$ (such a matrix is called _positive semi-definite_). 
+:::
+
+:::{.exercise}
+
+Show that $\mu = \E(X)$ and $\Sigma = \Var(X)$ from this definition.
+
+:::
+
+:::{#normal-if .exercise}
+
+The _characteristic function_ of a random vector $X$ is the function
+$$
+\varphi_X(\lambda)
+  = \E(e^{i\lambda^\top X})
+$$
+where $i$ is the imaginary unit (i.e., $i^2 = -1$). The characteristic function is similar to the moment generating function, with the important benefit that $\varphi_X(\lambda)$ is guaranteed to exist for all $\lambda$. It can be shown that, if $X$ and $Y$ have the same characteristic function, then $X$ and $Y$ have the same distribution (the proof is not difficult if you are comfortable with real analysis, but not worth our time; see [this website](http://theanalysisofdata.com/probability/8_8.html) for all the ingredients of the proof).
+
+a. Show that the multivariate normal distribution is "well-defined" by Definition \@ref(def:mvn); that is, show that if $X$ and $Y$ both satisfy Definition \@ref(def:mvn) then they have the same distribution. Why do we require that $\Sigma$ is positive semi-definite and symmetric?
+
+b. Let $Z = (Z_1, \ldots, Z_n)$ be such that $Z_i \iid \Normal(0, 1)$ and let $Y = \mu + L Z$. Show that $Y \sim \Normal(\mu, L L^\top)$.
+
+c. Show that this also holds in the other direction: if $Y \sim \Normal(\mu, \Sigma)$ then there exists a matrix $L$ such that $Y \stackrel{d}{=} \mu + L Z$ where $Z = (Z_1, \ldots, Z_n) \iid \Normal(0,1)$ (where $\stackrel{d}{=}$ denotes equality in distribution). Based on this fact, propose an algorithm for randomly generating $Y \sim \Normal(\mu, \Sigma)$. _Hint:_ use either the Cholesky decomposition or the eigen decomposition to construct a matrix $L$ such that $LL^\top = \Sigma$.
+
+:::
+
+:::{.exercise}
+
+Suppose that $\Sigma$ is full-rank and that $Y \sim \Normal(\mu, \Sigma)$. Show that $Y$ has density
+$$
+  f(y \mid \mu, \Sigma)
+  =
+  \frac{1}{\sqrt{(2\pi)^n |\Sigma|}}
+    \exp\left\{ -\frac 1 2 (y - \mu)^\top \Sigma^{-1} (y - \mu) \right\}.
+$$
+What happens if $\Sigma$ is _not_ full-rank? _Hint:_ recall the change o variables formula, which states that if $Y = T(Z)$ where $T$ is a smooth one-to-one function then the density of $Y$ is
+$$
+  f_Y(y) = f_Z\{T^{-1}(y)\} |J(y)|
+$$
+ where $J(y)$ is the Jacobian matrix of $T^{-1}$. When $T(Z) = \mu + L Z$ where $L$ is a full-rank matrix, this simplifies to
+$$
+  f_Y(y) = f_Z\{L^{-1}(Y - \mu)\} |L^{-1}|. 
+$$
+
+:::
+
+While this is a nice formula to have, one works with non-full-rank $\Sigma$'s often enough that it is not actually particularly convenient to work with. For establishing the essential properties of the multivariate normal distribution, it is much more convenient to work with the characteristic function.
+
+:::{.exercise}
+
+We now derive the characteristic function of the multivariate normal distribution.
+
+a. Show that a standard normal random variable $Z$ has characteristic function
+$$
+  \varphi_Z(t)
+  =
+  \int \cos(tz) \, e^{-z^2 / 2} \ dz
+  =
+  e^{-t^2 / 2}.
+$$
+   This can be done in two steps: (i) because $\sin(tZ)$ is an odd function and $Z$ is symmetric, the imaginary part disappears and (ii) by differentiating under the integral, we can establish the differential equation $\frac d {dt} \varphi_Z(t) = -t \varphi_Z(t)$; solving this equation with the initial condition $\varphi_Z(0) = 1$ gives the result.
+   
+b. Using this result, show that the characteristic function of $X \sim \Normal(\mu, \Sigma)$ is
+$$
+  \varphi_X(\lambda) = \exp\left(i \lambda^\top \mu - \frac{\lambda^\top\Sigma\lambda}{2}\right).
+$$
+
+:::
+
+The multivariate normal distribution has a large number of desirable properties. First, it is _closed under marginalization_. Suppose that
+$$
+  \begin{pmatrix}
+    X \\ Y
+  \end{pmatrix}
+  \sim
+  \Normal \left(
+  \begin{pmatrix}
+    \mu_x \\ \mu_y
+  \end{pmatrix},
+  \begin{pmatrix}
+    \Sigma_{xx} & \Sigma_{xy} \\ \Sigma_{yx} & \Sigma_{yy}.
+  \end{pmatrix}
+  \right),
+$$
+
+Here, the vectors $\mu_x$ and $\mu_y$ have the same dimension as $X$ and $Y$, and $\Sigma_{xx}$ and $\Sigma_{yy}$ are positive semi-definite symmetric matrices with dimensions matching $X$ and $Y$ respectively. Because the covariance matrix of $(X,Y)$ is symmetric, it follows that $\Sigma_{xy} = \Sigma_{yx}^\top$.
+
+:::{.exercise}
+
+We now prove some basic properties.
+
+a. Show that $X \sim \Normal(\mu_x, \Sigma_{xx})$.
+
+b. The _covariance_ of $X$ and $Y$ is defined to be $\Cov(X,Y) = \E\{(X - \mu_x)(Y - \mu_y)^\top\}$. Show that (i) for any random vectors, if $X$ and $Y$ are independent then the covariance is equal to the zero matrix and (ii) for the multivariate normal distribution in particular the covariance matrix is $\Sigma_{xy}$.
+
+c. Using the characteristic function, show that for the multivariate normal distribution $X$ is independent of $Y$ if-and-only-if $\Sigma_{xy}$ is equal to zero. This is an interesting reversal -- in general, the covariance being $0$ does not imply independence, but it does for multivariate normal random vectors.
+
+d. Suppose $Y \sim \Normal(\mu, A)$ given $\mu$ and $\mu \sim \Normal(m, B)$. Show that
+$$
+\begin{aligned}
+\begin{pmatrix}
+  Y \\ \mu
+\end{pmatrix}
+&\sim
+  \Normal\left\{
+  \begin{pmatrix}
+    m \\ m
+  \end{pmatrix},
+\begin{pmatrix}
+  A + B & B \\
+  B & B
+\end{pmatrix}
+  \right\}.
+\end{aligned}
+$$
+:::
+
+:::{.exercise}
+
+We will now show that the conditional distribution of $X$ given $Y = y$ is
+$$
+  X \sim \Normal(\mu_{x \mid y}, \Sigma_{x \mid y})
+  (\#eq:conditional)
+$$
+where $\mu_{x \mid y} = \mu_x + \Sigma_{xy} \Sigma_{yy}^{-1} (y - \mu_y)$ and $\Sigma_{x \mid y} = \Sigma_{xx} - \Sigma_{xy} \Sigma_{yy}^{-1} \Sigma_{yx}$.
+
+a. Write $X = W + (X - W)$ where $W = \mu_x + \Sigma_{xy} \Sigma_{yy}^{-1} (Y - \mu_y)$. Show that $\Cov(Y, X - W) = 0$ so that $X - W$ is independent of $Y$.
+
+b. Show that the covariance matrix of $X - W$ is $\Sigma_{xx} - \Sigma_{xy} \Sigma_{yy}^{-1} \Sigma_{yx}$ and that the mean is $\boldsymbol 0$. 
+
+c. Argue that because (i) $W$ is constant as a function of $Y$, (ii) $X - W$ is independent of $Y$, (iii) $X = W + (X - W)$, and (iv) $X - W \sim \Normal(\boldsymbol 0, \Sigma_{xx} - \Sigma_{xy} \Sigma_{yy}^{-1} \Sigma_{yx})$ that we can conclude that the distribution of $X$ given $Y$ is given by \@ref(eq:conditional).
+
+:::
+
+_Remark:_ when $\Sigma_{yy}$ is not full-rank it suffices to replace $\Sigma_{yy}^{-1}$ with a _generalized inverse_ $\Sigma_{yy}^-$ satisfying $\Sigma_{yy}^- \Sigma_{yy} \Sigma_{yy}^- = \Sigma_{yy}^-$. Can you see why this still works? Can you argue using the spectral theorem that such a generalized inverse always exists?
+
+### Inference or Gaussian Processes
+
 :::{.exercise}
 
 Suppose that $Y_i \stackrel{\text{indep}}{\sim} \Normal\{\mu(X_i), \sigma^2\}$ conditional on $\bX$ for $i = 1, \ldots, N$ and $\mu$. Let $\bX = (X_1, \ldots, X_N)$ and $\bY = (Y_1, \ldots, Y_N)$.
 
-Show that the posterior distribution of $\mu$ is given by
+a. Show that the posterior distribution of $\mu$ is given by
 $$
   [\mu \mid \bX, \bY, \sigma^2]
   \sim
@@ -325,60 +681,165 @@ $$
     m(x) +
       K(x, \bX) \{K(\bX, \bX) +
       \sigma^2 \Identity\}^{-1} \{\mathbf Y - m(\mathbf X)\} \\
-  K^\star(x, x') &= K(x, x') - [[XXX]]
+  K^\star(x, x') &= 
+    K(x, x') 
+      -K\left(\binom{x}{x'}, \bX\right) 
+      \{K(\bX, \bX) + \sigma^2 \Identity\}^{-1} 
+      K\left(\binom{x}{x'}, \bX\right)
 \end{aligned}
 $$
 
+b. Argue that the marginal likelihood of $\bY$ (i.e., with the random function $\mu$ integrated out) is given by
+$$
+  |2\pi(K(\bX, \bX) + \sigma^2 \, \Identity)|^{-1/2} 
+  \exp\left\{-\frac 1 2 (\bY - m(\bX))^\top 
+                       (K(\bX, \bX) + \sigma^2 \, \Identity)^{-1} 
+                       (\bY - m(\bX))\right\}.
+$$
+Or, equivalently, that $[\bY \mid \bX, \sigma] \sim \Normal\left\{m(\bX), K(\bX, \bX) + \sigma^2 \, \Identity\right\}$.
+
 :::
+
+
 
 :::{.exercise}
 
 Read up on the [Matérn class](https://en.wikipedia.org/wiki/Mat%C3%A9rn_covariance_function) of covariance functions. The Matérn class has the _squared exponential_ covariance function as a special case:
 $$
-  K(x, x') = \sigma_\mu^2 \exp \left\{ -\frac{1}{2} \sum_{j=1}^P \left(\frac{x_j - x'_j}{h}\right)^2 \right\} + \sigma_\delta^2 \,  \delta(x, x') \, ,
+  K(x, x') = \sigma_\mu^2 \exp \left\{ -\frac{1}{2} \sum_{j=1}^P \left(\frac{x_j - x'_j}{h}\right)^2 \right\} + \sigma_\delta^2 \,  \delta(x, x') \, .
 $$
+The constants $(\sigma^2_\mu, \sigma^2_\delta, h)$ are often called _hyperparameters_ and $\delta(x,x')$ is the Kronecker delta function that takes the value 1 if $x = x'$ and $0$ otherwise. 
+
+Let's start with the simple case where $\mathcal{X} = [0,1]$, the unit interval.  Write a function that simulates a mean-zero Gaussian process on $[0,1]$ under the squared exponential covariance function.  The function will accept as arguments: (1) finite set of points $x_1, \ldots, x_N$ on the unit interval; and (2) a triplet $(\sigma^2_\mu, \sigma^2_\delta, h)$. It will return the value of the random process at each point: $\mu(x_1), \ldots, \mu(x_N)$.
+
+a. Use your function to simulate (and plot) Gaussian processes across a range of values for $\sigma^2_\mu$, $\sigma^2_\delta$, and $h$.  Try starting with a very small value of $\sigma^2_\delta$ (say, $10^{-6}$) and playing around with the other two first.  On the basis of your experiments, describe the role of these three hyperparameters in controlling the overall behavior of the random functions that result.  What happens when you try $\sigma^2_\delta = 0$? Why?
+
+b. Write a function that fits a Gaussian process posterior under this prior 
+   distribution to data. This function should estimate the parameters $(\sigma^2, \sigma^2_\mu, h)$ by maximizing the marginal likelihood of the data $\bY$. The function should be of the form
+    ```{r, eval = FALSE}
+    fit_gp <- function(X, Y, X_test, sigma_delta) {
+      ## Your code here
+      return(list(
+             mu_hat = mu_hat, 
+             lower = lower,
+             upper = upper,
+             sigma_hat = sigma_hat, 
+             sigma_mu_hat = sigma_mu_hat, 
+             h_hat = h_hat
+      ))
+    }
+    ```
+   where `mu_hat` is the posterior mean of the function evaluated at the points in `X_test`, `lower` and `upper` are the endpoints of 95% credible intervals intervals, `sigma_hat` is the estimate of the standard deviation, `sigma_mu_hat` is the estimate of $\sigma^2_\mu$, and `h_hat` is the posterior estimate of $h$.  Here, `sigma_delta` is the value of $\sigma^2_\delta$ used in the prior and `X_test` is an $N_{\text{test}} \times P$ design matrix of points that we want to evaluate the Gaussian process at. __NOTE:__ you derived the log marginal likelihood of $\bY$ in a previous problem. You can use the `optim` function in `R` to maximize this log-likelihood, but you should be careful in how you do this because there may be multiple modes of the marginal likelihood. 
+
+c. Use the function you wrote to fit a Gaussian process to the data in `data/gp_data.csv` and plot a posterior mean and credible band for the result (you can use the same matrix `X` for the training and testing data).
+
+d. You might notice that the relationship between $Y_i$ and $X_i$ in this data appears to be approximately linear. One way to account for this is to use a _linear_ mean function in the Gaussian process model, i.e.,
+$$
+  m(x) = \beta_0 + \beta_1 x \, .
+$$
+Since we don't know $\beta_0$ and $\beta_1$, however, we might want to put a prior distribution on these as well. Show that if we set $\beta_0 \sim \Normal(0, a^2)$ and $\beta_1 \sim \Normal(0, b^2)$, then this is _equivalent_ to using the modified covariance function
+$$
+  K_{\text{new}}(x, x') = K(x,x') + a^2 + b^2 x x' \, .
+$$
+Equivalently, the covariance matrix for $\bX$ is given by
+$$
+  K_{\text{new}}(\bX, \bX) = K(\bX,\bX) + a^2 \, \boldsymbol{J} + b^2 \bX\bX^\top \, ,
+$$
+where $\boldsymbol{J} = \boldsymbol 1 \boldsymbol 1^\top$ is a matrix consisting of all $1$'s. Now, modify your `fit_gp` function to create a new function `fit_gp_linear` that fits a Gaussian process with a linear mean function to the data in `data/gp_data.csv` (you can fix $a$ and $b$ at somewhat large constants for this).  Plot the posterior mean and credible band for the result. How does this compare to the result from part (c)?
+
+:::
+
+
+:::{.solution}
+
+We first define our function.
+```{r}
+simulate_gp <- function(x, sigma_mu, sigma_delta, h) {
+  if(is.matrix(x)) stop("Only vectors, please")
+  n <- length(x)
+  K <- sigma_mu^2 * exp(-as.matrix(dist(x))^2 / 2 / h^2) + 
+    sigma_delta^2 * diag(n)
+  f <- as.numeric(MASS::mvrnorm(n = 1, rep(0, n), K))
+  return(data.frame(x = x, f = f))
+}
+```
+
+a. Next, we use this function to plot realizations.
+    ```{r}
+    set.seed(digest::digest2int("getting gps"))
+    theme_set(theme_bw())
+    x_gp <- seq(from = 0, to = 1, length = 200)
+    ggplot(simulate_gp(x_gp, 1, 0.001, 0.05), aes(x = x, y = f)) + geom_line()
+    ggplot(simulate_gp(x_gp, 1, 0.001, 0.1), aes(x = x, y = f)) + geom_line()
+    ggplot(simulate_gp(x_gp, 1, 0.001, 0.2), aes(x = x, y = f)) + geom_line()
+    ggplot(simulate_gp(x_gp, 1, 0.01, 0.2), aes(x = x, y = f)) + geom_line()
+    ggplot(simulate_gp(x_gp, 3, 0, 3), aes(x = x, y = f)) + geom_line()
+    ```
+
+b. 
+
+:::
+
+:::{.exercise}
+
+Go back to `utilities.csv` and plot the pointwise posterior mean and a 95% credible interval for the value of the function at each of the observed data points (superimposed on top of a scatterplot of the data itself). Do this using both the `fit_gp` and `fit_gp_linear` function you wrote in the previous exercise. How do the two fits to the data compare with one another?
 
 :::
 
 ## Basis Function Expansions
 
+Basis function expansions are a population alternative approach to estimating functions from data. The main idea is to approximate the a function as a linear combination of a set of basis functions:
+$$
+  \mu(x) = \beta_0 + \sum_{j = 1}^B \beta_j \, \psi_j(x)
+$$
+where the coefficients are estimated from data. For example, we might use the _polynomial basis_
+$$
+  \psi_j(x) = x^j,
+$$
+which, by the [Weierstrass approximation theorem](https://en.wikipedia.org/wiki/Stone%E2%80%93Weierstrass_theorem), is capable of approximating _any_ continuous $\mu(x)$ on a closed interval. Or, for data with strong _seasonal_ effects, we might instead use a trigonometric basis
+$$
+  \mu(x) 
+  = \beta_0 
+  + \sum_{j=1}^B \left\{\alpha_k \cos(k\pi x/L) 
+      + \beta_k \sin(k\pi x/L)\right\}.
+$$
+An advantage of this approach is its relative simplicity: for an intelligently-chosen basis, we can approximate complex, nonlinear, functions parsimoniously. Additionally, after fixing the basis $\psi(x) = (\psi_1(x), \ldots, \psi_B(x))$, the model for $\mu(x)$ is linear in the parameters; hence, we can estimate the coefficients using the tools we have already learned for GLMs!
+
+For univariate data, it is common to use a basis of _spline_ functions, which overcome some limitations the polynomial basis. While polynomials are simple and easy to understand, they have some drawbacks:
+
+1. Polynomials are _non-local_, with changes in the function in one area possibly having a large effect on the function in other areas (for an extreme example, see [Runge's phenomenon](https://en.wikipedia.org/wiki/Runge%27s_phenomenon)).
+
+2. Polynomial bases can be computationally unstable, especially when the degree is large.
+
+Splines are piecewise-defined functions that don't have these issues, but are still still being relatively simple to compute. Code displaying a commonly used spline basis is given below:
+
+```{r, message=FALSE, fig.cap="A set of cubic spline basis functions."}
+plot_spline_basis <- function(num_basis) {
+  require(splines)
+  require(latex2exp)
+  x <- seq(from = 0, to = 1, length = 500)
+  knots <- quantile(x, probs = seq(.1, .9, length.out = num_basis + 2))
+  X <- ns(x, knots = knots, intercept = FALSE)
+
+  plot(x, X[,1],
+    type = 'l',
+    ylim = c(0, max(X)),
+    xlab = 'x',
+    ylab = TeX("$\\psi_j(x)$")
+  )
+  for(i in 2:num_basis) {
+    lines(x, X[,i])
+  }
+}
+
+plot_spline_basis(10)
+```
+
+In the above figure, each of the basis function $\psi_j(x)$ corresponds to a _piecewise cubic function_ which is given by $\psi_j(x) = a_j + b_j \, x + c_j \, x^2 + d_j \, x^3$ on some interval $[L_j, U_j]$ and is $0$ outside this interval. The points at which these cubic polynomials become $0$ are referred to as the _knots_ of the spline. Given a set of knots $\{k_1, \ldots, k_D\}$, the cubic spline basis generates cubic functions on $[k_j, k_{j+1}]$ subject to the constraint that (i) $\mu(x)$ is continuous and (ii) $\mu(x)$ is two-times differentiable.
+
 <!-- 
 
-\begin{enumerate}[(A)]
-\item   Read up on the \href{https://en.wikipedia.org/wiki/Matrn_covariance_function}{Matern class}\footnote{\url{https://en.wikipedia.org/wiki/Matern_covariance_function}} of covariance functions.  The Matern class has the \textit{squared exponential} covariance function as a special case:
-$$
-C_{SE}(x_1, x_2) = \tau_1^2 \exp \left\{ - \frac{1}{2} \left( \frac{d(x_1, x_2)}{b} \right)^2 \right\} + \tau^2_2 \delta(x_1, x_2) \, ,
-$$
-where $d(x_1, x_2) = \Vert x_1 - x_2 \Vert_2$ is Euclidean distance (or just $|x-y|$ for scalars).  The constants $(b, \tau^2_1, \tau^2_2)$ are often called \textit{hyperparameters}, and $\delta(a,b)$ is the Kronecker delta function that takes the value 1 if $a=b$, and 0 otherwise.  But usually this covariance function generates functions that are ``too smooth,'' and so we use other covariance functions in the Matern class as a default.\footnote{See the speed comparison in kernel-benchmark.R on the class GitHub site if you want to see how Rcpp can be used to speed things up here.  My code is for the squared-exponential covariance function.}
-
-Let's start with the simple case where $\mathcal{X} = [0,1]$, the unit interval.  Write a function that simulates a mean-zero Gaussian process on $[0,1]$ under the squared exponential covariance function.  The function will accept as arguments: (1) finite set of points $x_1, \ldots, x_N$ on the unit interval; and (2) a triplet $(b, \tau^2_1, \tau^2_2)$. It will return the value of the random process at each point: $f(x_1), \ldots, f(x_N)$.
-
-Use your function to simulate (and plot) Gaussian processes across a range of values for $b$, $\tau^2_1$, and $\tau^2_2$.  Try starting with a very small value of $\tau^2_2$ (say, $10^{-6}$) and playing around with the other two first.  On the basis of your experiments, describe the role of these three hyperparameters in controlling the overall behavior of the random functions that result.  What happens when you try $\tau^2_2 = 0$? Why?  If you can fix this, do---remember our earlier discussion on different ways to simulate the MVN.
-
-Now simulating a few functions with a different covariance function, the Mat\'ern with parameter $5/2$:
-$$
-C_{M52}(x_1, x_2) = \tau_1^2 \left\{ 1 + \frac{\sqrt{5}d}{b} + \frac{5d^2}{3b^2} \right\} \exp\left( \frac{-\sqrt{5}d}{b} \right) + \tau^2_2 \delta(x_1, x_2) \, ,
-$$
-where $d = \Vert x_1 - x_2 \Vert_2$ is the distance between the two points $x_1$ and $x_2$.  Comment on the differences between the functions generated from the two covariance kernels.
-
-\item Suppose you observe the value of a Gaussian process $f \sim \mbox{GP}(m,C)$ at points $x_1, \ldots, x_N$.  What is the conditional distribution of the value of the process at some new point $x^{\star}$?  For the sake of notational ease simply write the value of the $(i,j)$ element of the covariance matrix as $C_{i,j}$, rather than expanding it in terms of a specific covariance function.
-
-\item Prove the following lemma.
-
-\begin{lemma}
-Suppose that the joint distribution of two vectors $y$ and $\theta$ has the following properties: (1) the conditional distribution for $y$ given $\theta$ is multivariate normal, $(y \mid \theta) \sim N(R\theta, \Sigma)$; and (2) the marginal distribution of $\theta$ is multivariate normal, $\theta \sim N(m,V)$.  Assume that $R$, $\Sigma$, $m$, and $V$ are all constants.  Then the joint distribution of $y$ and $\theta$ is multivariate normal.
-\end{lemma}
-
-\end{enumerate}
-
-
 \section{In nonparametric regression and spatial smoothing}
-
-\begin{enumerate}[(A)]
-
-\item Suppose we observe data $y_i = f(x_i) + \epsilon_i$, $\epsilon_i \sim N(0, \sigma^2)$, for some unknown function $f$. Suppose that the prior distribution for the unknown function is a mean-zero Gaussian process: $f \sim \mbox{GP}(0, C)$ for some covariance function $C$.  Let $x_1, \ldots, x_N$ denote the previously observed $x$ points.  Derive the posterior distribution for the random vector $[f(x_1), \ldots, f(x_N)]^\top$, given the corresponding outcomes $y_1, \ldots, y_N$, assuming that you know $\sigma^2$.
-
-\item As before, suppose we observe data $y_i = f(x_i) + \epsilon_i$, $\epsilon_i \sim N(0, \sigma^2)$, for $i=1, \ldots, N$.  Now we wish to predict the value of the function $f(x^{\star})$ at some new point $x^{\star}$ where we haven't seen previous data.  Suppose that $f$ has a mean-zero Gaussian process prior, $f \sim GP(0, C)$.  Show that the posterior mean $E\{ f(x^{\star}) \mid y_1, \ldots, y_N \}$ is a linear smoother, and derive expressions both for the smoothing weights and the posterior variance of $f(x^{\star})$.
 
 \item Go back to the utilities data, and plot the pointwise posterior mean and 95\% posterior confidence interval for the value of the function at each of the observed points $x_i$ (again, superimposed on top of the scatter plot of the data itself).  Choose $\tau^2_2$ to be very small, say $10^{-6}$, and choose $(b, \tau^2_1)$ that give a sensible-looking answer.\footnote{If you're bored with the utilities data, instead try the data in ethanol.csv, in which the NOx emissions of an ethanol engine are measured as the engine's fuel-air equivalence ratio (E in the data set) is varied.  Your goal would be to model NOx as a function of E using a Gaussian process. }
 
@@ -413,54 +874,62 @@ Justify your reasoning for using Euclidean distance or this ``nonisotropic'' dis
 
 -->
 
-<!-- ## Bayesian Nonparametric Estimation of a Distribution -->
+## Bayesian Nonparametric Estimation of a Distribution
 
-<!-- The most general nonparametric estimation problem is the problem of estimating an arbitrary _distribution_ $F$; [[ADD MOTIVATION FOR CONSIDERING THIS PROBLEM]]. -->
+The most general nonparametric estimation problem is the problem of estimating an arbitrary _distribution_ $F$. We list some examples where one might want to estimating a distribution below.
 
-<!-- A straight-forward estimate of $F$ is the empirical distribution $\EmpF$, which you should be familiar with at this point, so we won't go into much detail here. Instead, we will focus primarily on addressing this problem within the Bayesian framework. The main tool here is the _Dirichlet process_ (and its variants). -->
+- In survival analysis, one is often interested in estimating the _survival function_ $S(t) = \Pr(T > t)$, with a focus on situations in which $T$ is the time until some "bad event" happens (say, death due to cancer or time to progression from HIV to AIDS). In clinical settings, this problem is virtually always paired with the "problem" that not all individuals suffering from a disease will die during the study, so that the survival time $T_i$ is not always observed.
 
-<!-- :::{.definition} -->
+- We have spent a decent amount of time on generalized linear mixed effect models, but we have only assume that the random effect (say, $\alpha_i$) has a normal distribution $\Normal(0, \sigma^2_\alpha)$. As inferences might be sensitive to this assumption, we might prefer to estimate the _random effects_ distribution $\alpha_i \iid G$ nonparametrically.
 
-<!-- __Dirichlet process:__ Let $\mathcal Z$ denote the sample space for some random variable $Z_1$, let $\alpha > 0$, and let $H$ be a probability distribution on $\mathcal Z$. We say that a _random probability measure_ (RPM) $F$ is a _Dirichlet process_ on $\mathcal Z$ if, for any _finite measurable partition_ $A_1, \ldots, A_k$ of $\mathcal Z$ we have -->
-<!-- $$ -->
-<!--   (F(A_1), \ldots, F(A_k)) -->
-<!--   \sim -->
-<!--   \Dirichlet\{\alpha \, H(A_1), \ldots, \alpha \, H(A_k)\}. -->
-<!-- $$ -->
+- Generalizing the above problem, we might have several different _populations_ of interest with $Y_{ij} \indep G_j$ for $j = 1,\ldots,J$ and $i = 1,\ldots,N_j$. To improve estimation when some of the $N_j$'s are small, we might hope to borrow information across subgroups by specifying some joint prior for $(G_1, \ldots, G_J)$.
 
-<!-- ::: -->
+Note that in neither of these problems can we simply take $F$ to be the empirical distribution: in the case of survival analysis, we usually need to account for censoring of observations, in the case of GLMMs we do not directly observe the random effects $\alpha_i$, and in the case of hierarchical distribution estimation we are interested in _borrowing information_.
 
-<!-- The definition [[XXX]] is conceptually pleasant but can sometimes be difficult to work with and masks some of the more important properties of the Dirichlet process. An equivalent definition is given below, which is "constructive" in nature. -->
+A building block of many Bayesian approaches to nonparametric distribution estimation is the _Dirichlet process_.
 
-<!-- :::{.definition} -->
+:::{.definition #dp name="Dirichlet process"}
 
-<!-- __Alternate definition of the Dirichlet Process:__ Let $\mathcal Z$ denote the sample space for some random variable $Z_1$, let $\alpha > 0$, and let $H$ be a probability distribution on $\mathcal Z$. We say that an RPM $F$ is a _Dirichlet process_ on $\mathcal Z$ if we can write -->
-<!-- $$ -->
-<!--   F(dz) = \sum_{k = 1}^\infty \omega_k \, \delta_{\theta_k}(dz) -->
-<!-- $$ -->
-<!-- where $\theta_k \iid H$ and the $\omega_k$'s follow the _Sethuramann stick-breaking construction_ -->
-<!-- $$ -->
-<!--   \omega_k = \omega'_k \prod_{j < k} (1 - \omega'_j) -->
-<!--   \qquad \text{where} \qquad -->
-<!--   \omega'_k \sim \Beta(1, \alpha). -->
-<!-- $$ -->
-<!-- The prior for $\omega = (\omega_1, \omega_2, \ldots)$ is called the _[[XXX]] distribution_ and we write $\omega \sim \text{GEM}(\alpha)$ to denote this. -->
+Let $\mathcal Z$ denote the sample space for some random variable $Z_1$, let $\alpha > 0$, and let $H$ be a probability distribution on $\mathcal Z$. We say that a _random probability measure_ (RPM) $F$ is a _Dirichlet process_ on $\mathcal Z$ if, for any _finite measurable partition_ $A_1, \ldots, A_k$ of $\mathcal Z$ we have
+$$
+  (F(A_1), \ldots, F(A_k))
+  \sim
+  \Dirichlet\{\alpha \, H(A_1), \ldots, \alpha \, H(A_k)\}.
+$$
 
-<!-- ::: -->
+:::
 
-<!-- __Why is this true?__ A rigorous proof of the fact that the two definitions above are equivalent is beyond our scope, but if you are curious as to how one might guess that this is true note that under the original definition of the Dirichlet process it is possible to show that -->
-<!-- $$ -->
-<!--   F(dz) \stackrel{d}{=} \omega_1' \, \delta_{\theta} + (1 - \omega_1') \, F(dz). -->
-<!-- $$ -->
-<!-- where $\omega_k' \iid \Beta(1, \alpha)$ (it's not beyond your abilities to prove this as a homework exercise, but we have better uses of our time). We can then basically repeatedly apply this to write -->
-<!-- $$ -->
-<!--   F(dz) = \sum_{k=1}^K \omega_k \, \delta_{\theta_k} + \left(\prod_{j = 1}^K (1 - \omega'_k)\right) \, F(dz). -->
-<!-- $$ -->
-<!-- so that "letting $K \to \infty$" the first term goes to the Sethurmann stick-breaking construction, while the second term goes to $0$. This was basically Sethuramann's original reasoning, but it took a rather long time to publish the result, partially because getting all of the technical details correct is a bit tricky and, at the time, of unclear practical value. -->
+Definition \@ref(def:dp) is conceptually pleasant but can sometimes be difficult to work with and masks some of the more important properties of the Dirichlet process. An equivalent definition is given below, which is "constructive" in nature.
 
-<!-- ### The Posterior Distribution for the Dirichlet Process -->
+:::{.definition #stick-breaking name="Alternate definition of the Dirichlet process"}
 
-<!-- Aside from its elegant definition, the reason BNP inference for a distribution revolves around the Dirichlet process is that it is _conjugate to iid sampling._ -->
+Let $\mathcal Z$ denote the sample space for some random variable $Z_1$, let $\alpha > 0$, and let $H$ be a probability distribution on $\mathcal Z$. We say that an RPM $F$ is a _Dirichlet process_ on $\mathcal Z$ if we can write
+$$
+  F(dz) = \sum_{k = 1}^\infty \omega_k \, \delta_{\theta_k}(dz)
+$$
+where $\theta_k \iid H$ and the $\omega_k$'s follow the _Sethuramann stick-breaking construction_
+$$
+  \omega_k = \omega'_k \prod_{j < k} (1 - \omega'_j)
+  \qquad \text{where} \qquad
+  \omega'_k \sim \Beta(1, \alpha).
+$$
+The prior for $\omega = (\omega_1, \omega_2, \ldots)$ is called the _Griffiths-Engen-McCloskey distribution_ and we write $\omega \sim \text{GEM}(\alpha)$ to denote this.
+
+:::
+
+__Why is this true?__ A rigorous proof of the fact that the two definitions above are equivalent is beyond our scope, but if you are curious as to how one might guess that this is true note that under the original definition of the Dirichlet process it is possible to show that
+$$
+  F(dz) \stackrel{d}{=} \omega_1' \, \delta_{\theta} + (1 - \omega_1') \, F(dz).
+$$
+where $\omega_k' \iid \Beta(1, \alpha)$ (it's not beyond your abilities to prove this as a homework exercise, but we have better uses of our time). We can then basically repeatedly apply this to write
+$$
+  F(dz) \stackrel{d}{=} \sum_{k=1}^K \omega_k \, \delta_{\theta_k} + \left(\prod_{j = 1}^K (1 - \omega'_k)\right) \, F(dz).
+$$
+so that "letting $K \to \infty$" the first term goes to the Sethurmann stick-breaking construction, while the second term goes to $0$. This was basically Sethuramann's original reasoning, but it took a rather long time to publish the result, partially because getting all of the technical details correct is a bit tricky and, at the time, of unclear practical value.
+
+### The Posterior Distribution for the Dirichlet Process
+
+Aside from its elegant definition, the reason BNP inference for a distribution revolves around the Dirichlet process is that it is _conjugate to iid sampling._
 
 <!-- :::{.exercise} -->
 
@@ -507,34 +976,7 @@ Justify your reasoning for using Euclidean distance or this ``nonisotropic'' dis
 
 <!-- ### Basis Function Expansions -->
 
-<!-- $$ -->
-<!-- \begin{aligned} -->
-<!--   Y_i = \beta_0 + \psi(X_i)^\top \beta + \epsilon_i, -->
-<!--   \qquad \E(\epsilon_i \mid X_i) = 0 -->
-<!-- \end{aligned} -->
-<!-- $$ -->
 
-<!-- ```{r, echo = FALSE, message=FALSE, fig.cap="A set of cubic spline basis functions."} -->
-<!-- plot_spline_basis <- function(num_basis) { -->
-<!--   require(splines) -->
-<!--   require(latex2exp) -->
-<!--   x <- seq(from = 0, to = 1, length = 500) -->
-<!--   knots <- quantile(x, probs = seq(.1, .9, length.out = num_basis + 2)) -->
-<!--   X <- ns(x, knots = knots, intercept = FALSE) -->
-
-<!--   plot(x, X[,1], -->
-<!--     type = 'l', -->
-<!--     ylim = c(0, max(X)), -->
-<!--     xlab = 'x', -->
-<!--     ylab = TeX("$\\psi_j(x)$") -->
-<!--   ) -->
-<!--   for(i in 2:num_basis) { -->
-<!--     lines(x, X[,i]) -->
-<!--   } -->
-<!-- } -->
-
-<!-- plot_spline_basis(10) -->
-<!-- ``` -->
 
 <!-- :::{.exercise} -->
 

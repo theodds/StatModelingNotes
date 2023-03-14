@@ -22,6 +22,7 @@ header-includes: |
  \newcommand{\Bernoulli}{\operatorname{Bernoulli}}
  \newcommand{\Beta}{\operatorname{Beta}}
  \newcommand{\Binomial}{\operatorname{Binomial}}
+ \newcommand{\Cov}{\operatorname{Cov}}
  \newcommand{\Data}{\mathcal D}
  \newcommand{\diag}{\operatorname{diag}}
  \newcommand{\Dirichlet}{\operatorname{Dirichlet}}
@@ -30,6 +31,7 @@ header-includes: |
  \newcommand{\EmpF}{\mathbb F}
  \newcommand{\Fhat}{\widehat F}
  \newcommand{\Fisher}{\mathcal I}
+ \newcommand{\GEM}{\operatorname{GEM}}
  \newcommand{\Ghat}{\widehat G}
  \newcommand{\Gam}{\operatorname{Gam}}
  \newcommand{\GP}{\operatorname{GP}}
