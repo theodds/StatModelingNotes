@@ -1,68 +1,28 @@
 # Nonparametric Methods
 
-<!--
-
-## Outline
-
-- Introduction
-
-- Distribution Estimation
-
-  - The empirical distribution
-    - As the nonparametric MLE
-  - The Dirichlet Process
-    - As a prior on random effects
-    - Adaptive shrinkage
-
-- Nonparametric Regression
-
-  - Irregular problems and  bias-variance tradeoff: MLE is Useless
-  - Curse of Dimensionality
-  - Basis function expansions
-    - Polynomial expansions
-    - Natural cubic splines
-    - Wavelets
-    - Bayesian adaptive basis function expansions and BART
-  - Smoothing Splines
-  - Kernel Smoothing
-    - Local linear smoothing
-  - Gaussian process regression
-    - Computation
-  - Classification
-
-- Density Estimation
-
-  - Histograms
-    - The Bayesian histogram
-  - Kernel density estimators: why they work
-  - Dirichlet process mixture models
-  - Undersmoothing
-
--->
-
 ## Overview
 
-In this set of notes, we will shift attention to various models that are referred to (broadly) as _nonparametric_. Speaking roughly, a model $\mathcal F = \{f_\theta : \theta \in \Theta\}$ is "nonparametric" if an $f \in \mathcal F$ "could be anything." Of course, this is a vague statement, and in reality the meaning of what a "nonparametric method" or a "nonparametric model" is varies according to context and the whims of whoever is writing about the topic. A couple of examples include:
+In this set of notes, we will shift attention to various models that are referred to (broadly) as _nonparametric_. Roughly, a model $\mathcal F = \{f_\theta : \theta \in \Theta\}$ is "nonparametric" if an $f \in \mathcal F$ "could be anything." Of course, this is a vague statement, and in reality the meaning of what a "nonparametric method" or a "nonparametric model" is varies according to context and the whims of whoever is writing about the topic. A couple of examples include:
 
 1. Suppose $Z_1, \ldots, Z_n \iid F_0$ where $F_0 \in \mathcal F$ and $\mathcal F$ is the set of all possible distributions on $\mathbb R$, and we want to estimate the distribution of $Z_i$. This is the problem of _nonparametric distribution estimation_.
 
-1. Ditto the above problem, except now we want to estimate the density $f_0$ of $F_0$. This is a problem of _nonparametric density estimation_, with the class $\mathcal F$ consisting of all distributions on $\mathbb R$ that admit a density.
+1. Ditto the above problem, except now we want to estimate the density $f_0$ of $F_0$. This is a problem of _nonparametric density estimation_, with the class $\mathcal F$ consisting of all distributions on $\mathbb R$ that have a density.
 
 1. Suppose we have
 $$
   Y_i = \mu(X_i) + \epsilon_i
 $$
-where $\epsilon_i \iid \Normal(0, \sigma^2)$. We assume $\mu(x)$ is a function from $\mathbb R$ to $\mathbb R$. While this is probably more accurately referred to as _Gaussian semiparametric regression_, because $\mu(\cdot)$ is unrestricted some folks still think of this as a nonparametric problem.
+where $\epsilon_i \iid \Normal(0, \sigma^2)$. We assume $\mu(x)$ is an arbitrary function. While this is probably more accurately referred to as _Gaussian semiparametric regression_, some folks still regard this as a nonparametric problem.
 
-Nonparametric models can be contrasted with _parametric_ models (which you should already be familiar) and _semiparametric_ models. Semiparametric models are sort of halfway between parametric and nonparametric models: they have a _parametric component_ indexed by a finite-dimensional parameter $\theta$, and a _nonparametric component_ indexed by an infinite-dimensional parameter $\eta$, which is often viewed as a nuisance parameter.
+Nonparametric models can be contrasted with _parametric_ models and _semiparametric_ models. Semiparametric models are halfway between parametric and nonparametric models: they have a _parametric component_ indexed by a finite-dimensional parameter $\theta$, and a _nonparametric component_ indexed by an infinite-dimensional parameter $\eta$, which is often viewed as a nuisance parameter. In the case of the semiparametric Gaussian regression model, this term would apply with $\theta = \sigma^2$ (the error variance is finite dimensional) and $\eta = \mu$ (the regression function is not).
 
-## Linear Smoothing, Basis Function Expansions, and Gaussian Processes
+## Linear Smoothing and Basis Function Expansions
 
 Much of the material in this section is borrowed from the notes of James Scott (with some minor changes on my part); the original is available [at this repository](https://github.com/jgscott/SDS383D/blob/master/exercises/exercises06-SDS383D.pdf). All errors and typos past this point are, of course, my own `r emo::ji("smile")`.
 
 ### The Bias-Variance Tradeoff
 
-Let $\widehat \mu(x)$ be a noisy estimate of some function $\mu(x)$ at some point $x$ and definet he _mean-squared error_ of the estimate as
+Let $\widehat \mu(x)$ be a noisy estimate of some function $\mu(x)$ at some point $x$ and define the _mean-squared error_ of the estimate as
 $$
   \MSE(\widehat\mu, \mu)
   =
@@ -80,7 +40,7 @@ $$
 
 :::
 
-This decomposition is referred to as the _bias-variance decomposition_. Generally speaking, nonparametric function estimation involves balancing these quantities: how small can we make the bias while keeping the variance manageable?
+This decomposition is referred to as the _bias-variance decomposition_. Nonparametric function estimation involves balancing these quantities: how small can we make the bias while keeping the variance manageable?
 
 :::{.exercise name="Density Estimation With Histograms"}
 
@@ -108,7 +68,7 @@ $$
 $$
 for constants $A$ and $B$ that you should (approximately) specify. What happens to the bias and variance when you make $h$ small? When you make $h$ big?
 
-c. Use this result to derive an expression for the bandwidth that minimizes the mean-squared error as a function of $N$. You can approximate any constantst hat appear, but make sure you get the right functional dependence on the sample size.
+c. Use this result to derive an expression for the bandwidth that minimizes the mean-squared error as a function of $N$. You can approximate any constants that appear, but make sure you get the right functional dependence on the sample size.
 
 :::
 
@@ -120,7 +80,7 @@ Consider a nonlinear regression problem with one predictor and one response: $Y_
 
 a. Suppose you want to estimate the value of the regression function $\mu(x^\star)$ at some new point $x^\star$. Assume for the moment that $\mu(x)$ is linear and that both $Y_i$ and $X_i$ are mean $0$, in which case $Y_i = \beta \, X_i + \epsilon_i$.
 
-    Recall that least-squares estimator for multiple regression. Show that for the one-predictor case, your prediction $\mu(x^\star) = \widehat \beta \, x^\star$ can be expressed as a _linear smoother_ of the form
+    Recall the least-squares estimator for multiple regression. Show that for the one-predictor case, your prediction $\mu(x^\star) = \widehat \beta \, x^\star$ can be expressed as a _linear smoother_ of the form
 $$
   \widehat \mu(x^\star)
   =
@@ -163,63 +123,7 @@ $$
 $$
     where $h$ is the bandwidth. Using this weighting function in a linear smoother is called _kernel regression_. (The weighting function gives unnormalized weights; you should also normalize the weights so that they sum to $1$.)
 
-    __Write your own `R` function that will fit a kernel smoother for an arbitrary set of $(X_i, Y_i)$ pairs and arbitrary choice of (positive real) bandwidth $h$.__ You may choose your own kernel. Set up an `R` script that will simulate noisy data from some nonlinear function $Y_i = \mu(X_i) + \epsilon_i$; subtract the sample means from the simulated data; and use your function to fit the kernel smoother for some choice of $h$. Plot the estimated functions for a range of bandwidths wide enough to yield noticable differences in the qualitative behavior of the prediction functions.
-
-:::
-
-:::{.solution}
-
-xxx
-
-a. Assume for simplicity that $\sum_i X_i^2 = 1$. Then it is easy to show that the weighting function is
-$$
-  \sum_i (x^\star \cdot X_i) \, Y_i,
-$$
-i.e., the weighting function just multiplies $X_i$ by $x^\star$. Effectively, this weights $Y_i$ largely if $X_i$ is _large in magnitude_, with a positive weight if $x^\star$ and $X_i$ have the same sign and a negative weight otherwise. Hence, observation $i$ can have a weight that is large even if $X_i$ is very far away from $x^\star$. On the other hand, the $K$-nearest neighbors weighting function only assigns positive weight to observations such that $x^\star$ is _close_ to $X_i$.
-
-b. Let's use the Gaussian kernel, with weights proportional to $w(x^\star, X_i) = \frac{1}{h} \, \phi\left(\frac{x^\star - X_i}{h}\right).
-```{r}
-tony_ksmooth <- function(x, x_test, y, h) {
-  x_c <- x - mean(x)
-  x_test_c <- x_test - mean(x)
-  y_c <- y - mean(y)
-  n_test <- length(x_test)
-  
-  out <- numeric(n_test) 
-  for(i in 1:n_test) {
-    weights <- dnorm(x_test_c[i], x_c, h)
-    weights <- weights / sum(weights)
-    out[i] <- sum(weights * y)
-  }
-  
-  out <- out + mean(y)
-  attr(out, "weights") <- weights
-  return(out)
-}
-
-x <- seq(from = 0, to = 1, length = 200)
-y <- sin(3.5 * pi * x) + 0.1 * rnorm(length(x))
-
-pal <- scales::viridis_pal()(10)
-
-
-plot(x,y)
-add_line <- function(h, ...) {
-  y_hat <- tony_ksmooth(x, x, y, h)
-  lines(x, y_hat, ...)
-}
-
-add_line(1, col = pal[1], lwd = 2)
-add_line(0.5, col = pal[2], lwd = 2)
-add_line(0.2, col = pal[3], lwd = 2)
-add_line(0.1, col = pal[4], lwd = 2)
-add_line(0.05, col = pal[5], lwd = 2)
-add_line(0.02, col = pal[6], lwd = 2)
-add_line(0.01, col = pal[7], lwd = 2)
-add_line(0.005, col = pal[8], lwd = 2)
-add_line(0.002, col = pal[9], lwd = 2)
-# add_line(0.001, col = pal[10])
-```
+    __Write your own `R` function that will fit a kernel smoother for an arbitrary set of $(X_i, Y_i)$ pairs and arbitrary choice of (positive real) bandwidth $h$, and test it on a nonlinear function of your choice.__ You may choose your own kernel. Set up an `R` script that will simulate noisy data from some nonlinear function $Y_i = \mu(X_i) + \epsilon_i$; subtract the sample means from the simulated data; and use your function to fit the kernel smoother for some choice of $h$. Plot the estimated functions for a range of bandwidths wide enough to yield noticable differences in the qualitative behavior of the prediction functions.
 
 :::
 
@@ -254,166 +158,28 @@ d. Use the leave-one-out lemma to revisit the examples you simulated in Part B, 
 
 :::
 
-:::{.solution}
+::: exercise
 
-xxx
+In this exercise we will consider linear smoothing when (potentially) we are concerned that the errors in the model $Y_i = r(X_i) + \epsilon_i$ do not have constant variance. 
 
-a. Using the `tony_ksmooth` function we have
-```{r}
-tony_ksmooth_cv <- function(x, x_test, y, y_test, h_grid) {
-  grid_size <- length(h_grid)
-  mu_test <- matrix(nrow = grid_size, ncol = length(x_test))
+a. Suppose that the $\epsilon_i$'s have constant variance $\sigma^2$ (that is, the spread of the residuals does not depend on $x$). Derive the mean and variance of the sampling distribution for the locally constant linear smoother. Note: the random variable $\widehat{\mu}(x)$ is just a scalar quantity at $x$, not the whole function.
 
-  rmse <- function(a,b) sqrt(mean((a-b)^2))
-  prediction_error <- numeric(grid_size)
+b. We don't know the residual variance, but we can estimate it.  A basic fact is that if $X$ is a random vector with mean $\mu$ and covariance matrix $\Sigma$, then for any symmetric matrix $Q$ of appropriate dimension, the quadratic form $X^\top Q X$ has expectation
+$$
+  E(X^\top Q X) = \mbox{tr}(Q \Sigma) + \mu^\top Q \mu \, .
+$$
+Consider an arbitrary linear smoother (i.e., one with $\widehat Y = HY$ for some smoothing matrix $H$). Write the vector of residuals as $R = Y - \widehat{Y} = Y - HY$, where $H$ is the smoothing matrix.  Compute the expected value of the estimator
+$$
+  \widehat{\sigma}^2 = \frac{\|R\|^2}{n - 2\mbox{tr}(H) + \mbox{tr}(H^\top H)} \, ,
+$$
+and simplify things as much as possible.  Roughly under what circumstances will this estimator be nearly unbiased for large $N$?  Note: the quantity $2\mbox{tr}(H) - \mbox{tr}(H^\top H)$ is often referred to as the "effective degrees of freedom" in such problems.
 
-  for(i in 1:grid_size) {
-    mu_test[i,]         <- tony_ksmooth(x, x_test, y, h_grid[i])
-    prediction_error[i] <- rmse(mu_test[i,], y_test)
-  }
+c. Load the `utilities.csv` data into `R`.^[On the class GitHub site] This data set shows the monthly gas bill (in dollars) for a single-family home in Minnesota, along with the average temperature in that month (in degrees F), and the number of billing days in that month.  Let $Y_i$ be the average daily gas bill in a given month (i.e. dollars divided by billing days), and let $X_i$ be the average temperature. Using leave-one-out cross-validation to choose the bandwidth, make a scatterplot of `gasbill` as a function of `temp` with a kernel smooth of the relationship overlayed.
 
-  out <- list(
-    mu_hat_matrix = mu_test,
-    prediction_error = prediction_error,
-    h_opt = h_grid[which.min(prediction_error)],
-    mu_hat_cv = mu_test[which.min(prediction_error), ]
-  )
+d. Inspect the residuals from the model you just fit.  Does the assumption of constant variance (homoskedasticity) look reasonable?  If not, do you have any suggestion for fixing it?
 
-  return(out)
-}
-```
+e. Put everything together to construct an approximate point-wise 95\% confidence interval for your kernel smoother (using your chosen bandwidth) for the value of the function at each of the observed points $X_i$ for the utilities data.  Plot these confidence bands, along with the estimated function, on top of a scatter plot of the data.^[It's fine to use Gaussian critical values for your confidence set.]
 
-b. For simplicity, let's use some trigonometric functions. Specifically, let's take
-
-   1. Low-noise, not-wiggly: $\sin(2\pi x)$ and $\sigma = 0.1$.
-   
-   2. Low-noise, wiggly: $\sin(8\pi x)$ and $\sigma = 0.1$.
-   
-   3. High-noise, not-wiggly: $\sin(2\pi x)$ and $\sigma = 1$.
-   
-   4. High-noise, wiggly: $\sin(8 \pi x)$ and $\sigma = 1$.
-   
-   The following code using `tony_ksmooth_cv` to fit the model.
-   ```{r}
-   gen_data <- function(h_grid, N = 500, low_noise = TRUE, wiggly = TRUE) {
-     x <- seq(from = 0, to = 1, length = N)
-     x_test <- x
-     sigma <- ifelse(low_noise, 1, 0.1)
-     freq <- ifelse(wiggly, 8 * pi, 2 * pi)
-     y <- sigma * rnorm(N) + sin(freq * x)
-     y_test <- sigma * rnorm(N) + sin(freq * x_test)
-     
-     fitted_data <- tony_ksmooth_cv(x, x_test, y, y_test, h_grid)
-     
-     fitted_data$training <- data.frame(x = x, y = y)
-     fitted_data$testing <- data.frame(x = x_test, y = y_test)
-     
-     return(fitted_data)
-   }
-   
-   h_grid <- c(0.002, 0.005, 0.01, 0.02, 0.05, 0.1, 0.2, 0.5, 1)
-   
-   set.seed(digest::digest2int("wiggly"))
-   wiggly_low     <- gen_data(h_grid, low_noise = TRUE, wiggly = TRUE)
-   wiggly_high    <- gen_data(h_grid, low_noise = FALSE, wiggly = TRUE)
-   notwiggly_low  <- gen_data(h_grid, low_noise = TRUE, wiggly = FALSE)
-   notwiggly_high <- gen_data(h_grid, low_noise = FALSE, wiggly = FALSE)
-   ```
-   Next, let's plot the output.
-   ```{r}
-   plot_fit <- function(fit) {
-     library(ggplot2)
-     ggplot(fit$testing, aes(x = x, y = y)) + 
-       geom_point() +
-       geom_line(aes(x = x, y = fit$mu_hat_cv), size = 2, color = "#E69F00") +
-       theme_bw()
-   }
-   
-   plot_fit(wiggly_low)
-   plot_fit(wiggly_high)
-   plot_fit(notwiggly_low)
-   plot_fit(notwiggly_high)
-   ```
-  
-   The bandwidth looks good to me in each case!
-   
-c. Use the hint to solve the problem directly.
-
-d. We can redo the problem as follows:
-    ```{r}
-    tony_ksmooth_loo <- function(x, y, h) {
-     x_c <- x - mean(x)
-     y_c <- y - mean(y)
-     n <- length(x_c)
-     
-     weights <- matrix(nrow = n, ncol = n)
-     out <- numeric(n)
-     loo_error <- numeric(n)
-     for(i in 1:n) {
-       weights[i,] <- dnorm(x_c[i], x_c, h)
-       weights[i,] <- weights[i,] / sum(weights[i,])
-       out[i] <- sum(weights[i,] * y)
-     }
-     
-     loo_res <- (y - out) / (1 - diag(weights))
-     loo_rmse <- sqrt(mean(loo_res^2))
-     
-     return(list(mu_hat = out, loo_rmse = loo_rmse))
-    }
-    
-    tony_ksmooth_loo_cv <- function(x, y, h_grid) {
-     grid_size <- length(h_grid)
-     prediction_error <- numeric(grid_size)
-     
-     for(i in 1:grid_size) {
-       out <- tony_ksmooth_loo(x, y, h_grid[i])
-       prediction_error[i] <- out$loo_rmse
-     }
-     
-     h_opt <- h_grid[which.min(prediction_error)]
-     out <- tony_ksmooth_loo(x, y, h_opt)
-     
-     return(list(
-       mu_hat = out$mu_hat, 
-       prediction_error = prediction_error, 
-       h_opt = h_opt
-     ))
-    }
-    
-    gen_data_loo <- function(h_grid, N = 500, low_noise = TRUE, wiggly = TRUE) {
-     x <- seq(from = 0, to = 1, length = N)
-     sigma <- ifelse(low_noise, 1, 0.1)
-     freq <- ifelse(wiggly, 8 * pi, 2 * pi)
-     y <- sigma * rnorm(N) + sin(freq * x)
-     
-     fitted_data <- tony_ksmooth_loo_cv(x, y, h_grid)
-     
-     fitted_data$training <- data.frame(x = x, y = y)
-     
-     return(fitted_data)
-    }
-    
-    h_grid <- c(0.002, 0.005, 0.01, 0.02, 0.05, 0.1, 0.2, 0.5, 1)
-    
-    set.seed(digest::digest2int("wiggly"))
-    wiggly_low_loo     <- gen_data_loo(h_grid, low_noise = TRUE, wiggly = TRUE)
-    wiggly_high_loo    <- gen_data_loo(h_grid, low_noise = FALSE, wiggly = TRUE)
-    notwiggly_low_loo  <- gen_data_loo(h_grid, low_noise = TRUE, wiggly = FALSE)
-    notwiggly_high_loo <- gen_data_loo(h_grid, low_noise = FALSE, wiggly = FALSE)
-    
-    plot_fit_loo <- function(fit) {
-     library(ggplot2)
-     ggplot(fit$training, aes(x = x, y = y)) + 
-       geom_point() +
-       geom_line(aes(x = x, y = fit$mu_hat), size = 2, color = "#E69F00") +
-       theme_bw()
-    }
-    
-    plot_fit_loo(wiggly_low_loo)
-    plot_fit_loo(wiggly_high_loo)
-    plot_fit_loo(notwiggly_low_loo)
-    plot_fit_loo(notwiggly_high_loo)
-    ```
 :::
 
 ### Local Polynomial Regression
@@ -447,42 +213,23 @@ w(x, X_i) = \left\{1 - \left(\frac{|x - X_i|}{h_\alpha(x)}\right)^3\right\}_+^3
 $$
 where $h_\alpha(x) = \max_{j : X_j \in B_x}\{|x - X_j|\}$ and $B_x$ is a neighborhood of $x$ chosen so to include $100\alpha\%$ of the data; for example, if $\alpha = 0.1$ then the bandwidth will be chosen using the $10\%$ of the observations closest to $x$. This choice of bandwidth is data-adaptive in that if there are many observations near $x$ then we will use a small bandwidth, while if there are only a few observations near $x$ then we will use a large bandwidth. The `loess` function can be used to fit local polynomial models by specifying the `degree` argument: `degree = 0`, `1`, or `2` corresponds to locally constant, linear, and quadratic fits respectively.
 
-:::{.exercise}
+For comparison, below I give a confidence band for the `loess` fit using local linear regression.
 
-In this exercise we will consider local polynomial methods when (potentially) we are concerned that the errors in the model $Y_i = r(X_i) + \epsilon_i$ do not have constant variance. 
-
-a. Suppose that the $\epsilon_i$'s have constant variance $\sigma^2$ (that is, the spread of the residuals does not depend on $x$).  Derive the mean and variance of the sampling distribution for the locally constant linear smoother. Note: the random variable $\widehat{\mu}(x)$ is just a scalar quantity at $x$, not the whole function.
-
-b. We don't know the residual variance, but we can estimate it.  A basic fact is that if $X$ is a random vector with mean $\mu$ and covariance matrix $\Sigma$, then for any symmetric matrix $Q$ of appropriate dimension, the quadratic form $X^\top Q X$ has expectation
-$$
-E(X^\top Q X) = \mbox{tr}(Q \Sigma) + \mu^\top Q \mu \, .
-$$
-Consider an arbitrary linear smoother (i.e., one with $\widehat Y = HY$ for some smoothing matrix $H$). Write the vector of residuals as $R = Y - \widehat{Y} = Y - HY$, where $H$ is the smoothing matrix.  Compute the expected value of the estimator
-$$
-\widehat{\sigma}^2 = \frac{\|r\|^2}{n - 2\mbox{tr}(H) + \mbox{tr}(H^\top H)} \, ,
-$$
-and simplify things as much as possible.  Roughly under what circumstances will this estimator be nearly unbiased for large $N$?  Note: the quantity $2\mbox{tr}(H) - \mbox{tr}(H^\top H)$ is often referred to as the "effective degrees of freedom" in such problems.
-
-c. Load the `utilities.csv` data into `R`.^[On the class GitHub site] This data set shows the monthly gas bill (in dollars) for a single-family home in Minnesota, along with the average temperature in that month (in degrees F), and the number of billing days in that month.  Let $Y_i$ be the average daily gas bill in a given month (i.e. dollars divided by billing days), and let $X_i$ be the average temperature. Fit $Y_i$ versus $X_i$ using `loess`. Use leave-one-out cross-validation to choose the bandwidth.
-
-:::
-
-<!--
-
-:::{.exercise}
-
-d. 
-W
-
-e. Write code that fits the local linear estimator using a Gaussian kernel for a specified choice of bandwidth $h$. Then load the data in `utilities.csv` into `R`.^[On the class GitHub site.] 
-
-f. Inspect the residuals from the model you just fit.  Does the assumption of constant variance (homoskedasticity) look reasonable?  If not, do you have any suggestion for fixing it?
-
-g. Put everything together to construct an approximate point-wise 95\% confidence interval for the local linear model (using your chosen bandwidth) for the value of the function at each of the observed points $X_i$ for the utilities data.  Plot these confidence bands, along with the estimated function, on top of a scatter plot of the data.^[It's fine to use Gaussian critical values for your confidence set.]
-
-:::
-
--->
+```{r, include = FALSE}
+library(tidyverse)
+theme_set(theme_bw())
+```
+```{r}
+utilities <- readr::read_csv("datasets/utilities.csv")
+loess_util <- loess(gasbill ~ temp, data = utilities, span = 0.2, degree = 1)
+loess_preds <- predict(loess_util, utilities, se = TRUE)
+utilities %>%
+  mutate(fit = loess_preds$fit, se = loess_preds$se.fit) %>%
+  ggplot(aes(x = temp, y = gasbill, ymin = fit - 2 * se, ymax = fit + 2 * se)) +
+  geom_point() + 
+  geom_ribbon(alpha = 0.3, fill =   "#0072B2") + 
+  geom_line(aes(y = fit), color = "#E69F00", size = 2)
+```
 
 ## Nonparametric Bayesian Smoothing Via Gaussian Processes
 
@@ -490,32 +237,22 @@ An alternative setup to the smoothing problem is to instead think about the para
 
 - The space of continuous functions on a space $\mathcal X$.
 - The space of functions on $\mathcal X$ that are twice-continuously differentiable.
-- The space of square-integrable functions on $\mathcal X$ (i.e., the set of $\mu$'s such that $\int \mu(x)^2 \, f(x) \ dx$ for some density $f$ on $\mathcal X$).
+- The space of square-integrable functions on $\mathcal X$ (i.e., the set of $\mu$'s such that $\int \mu(x)^2 \, f(x) \ dx < \infty$ for some density $f$ on $\mathcal X$).
 
-A criteria for a prior to be "flexible" from this perspective is that the support of the prior $\Pi(d\mu)$ should have _large support_ in the sense that an arbitrary $\mu_0$ can be well-approximated by a sample from the prior; for example, we might ask that
+A criteria for a prior to be "flexible" from this perspective is that the support of the prior $\Pi(d\mu)$ should have _large support_ in the sense that an arbitrary $\mu_0$ can be well-approximated by a sample from the prior; for example, if $\mathcal X$ is compact, we might ask that
 $$
   \Pi(\sup_{x \in \mathcal X} |\mu_0(x) - \mu(x)| < \epsilon) > 0
 $$
 for all $\mu_0 \in \mathscr F$ and all $\epsilon > 0$. A common choice of prior $\Pi(d\mu)$ that can accomplish these goals is a Gaussian process prior.
 
-<!--
+:::{.definition name="Gaussian Process"}
 
-A _Gaussian process_ is a collection of random variables $\{\mu(x) : x \in \mathcal X\}$ such that, for any finite collection of indices $x_1, \ldots, x_N \in \mathcal X$, the random vector $(\mu(x_1), \ldots, \mu(x_N))^\top$ has a multivariate normal distribution. It is a generalization of the multivariate normal distribution to infinite-dimensional spaces. The set $\mathcal X$ is called the _index set_ or _state space_ of the process, and need not be countable.
-
--->
-
-:::{.definition}
-
-Let $m : \mathcal X \to \mathbb R$ and $K: \mathcal X^2 \to \mathbb R$.
-
-A random function $\mu : \mathcal X \to \mathbb R$ is said to be a _Gaussian process_ if, for any _finite_ set $D = \{x_1, \ldots x_D\}$ we have
+Let $m : \mathcal X \to \mathbb R$ and $K: \mathcal X^2 \to \mathbb R$. A random function $\mu : \mathcal X \to \mathbb R$ is said to be a _Gaussian process_ if, for any _finite_ set $D = \{x_1, \ldots x_D\}$ we have
 $$
   \mu(\mathbf x) =
   \Normal\{m(\mathbf x), K(\mathbf x, \mathbf x)\}
 $$
-where $\mathbf x = (x_1, \ldots, x_D)^\top$, $\mu(\mathbf x) = (\mu(x_1), \ldots, \mu(x_D))^\top$, $m(\mathbf x) = (m(x_1), \ldots, m(x_D))^\top$, and $K(\mathbf x, \mathbf x')$ is a covariance matrix with $(i,j)^{\text{th}}$ entry $K(x_i, x'_j)$. The function $K(\cdot, \cdot)$ is referred to as a _covariance function_.
-
-To denote this fact, we write $\mu \sim \GP(m, K)$.
+where $\mathbf x = (x_1, \ldots, x_D)^\top$, $\mu(\mathbf x) = (\mu(x_1), \ldots, \mu(x_D))^\top$, $m(\mathbf x) = (m(x_1), \ldots, m(x_D))^\top$, and $K(\mathbf x, \mathbf x')$ is a covariance matrix with $(i,j)^{\text{th}}$ entry $K(x_i, x'_j)$. The function $K(\cdot, \cdot)$ is referred to as a _covariance function_. To denote this fact, we write $\mu \sim \GP(m, K)$.
 
 :::
 
@@ -685,7 +422,7 @@ $$
     K(x, x') 
       -K\left(\binom{x}{x'}, \bX\right) 
       \{K(\bX, \bX) + \sigma^2 \Identity\}^{-1} 
-      K\left(\binom{x}{x'}, \bX\right)
+      K\left(\binom{x}{x'}, \bX\right)^\top
 \end{aligned}
 $$
 
@@ -704,36 +441,44 @@ Or, equivalently, that $[\bY \mid \bX, \sigma] \sim \Normal\left\{m(\bX), K(\bX,
 
 :::{.exercise}
 
-Read up on the [Matérn class](https://en.wikipedia.org/wiki/Mat%C3%A9rn_covariance_function) of covariance functions. The Matérn class has the _squared exponential_ covariance function as a special case:
+Let the _squared exponential_ covariance function be given by
 $$
   K(x, x') = \sigma_\mu^2 \exp \left\{ -\frac{1}{2} \sum_{j=1}^P \left(\frac{x_j - x'_j}{h}\right)^2 \right\} + \sigma_\delta^2 \,  \delta(x, x') \, .
 $$
 The constants $(\sigma^2_\mu, \sigma^2_\delta, h)$ are often called _hyperparameters_ and $\delta(x,x')$ is the Kronecker delta function that takes the value 1 if $x = x'$ and $0$ otherwise. 
 
-Let's start with the simple case where $\mathcal{X} = [0,1]$, the unit interval.  Write a function that simulates a mean-zero Gaussian process on $[0,1]$ under the squared exponential covariance function.  The function will accept as arguments: (1) finite set of points $x_1, \ldots, x_N$ on the unit interval; and (2) a triplet $(\sigma^2_\mu, \sigma^2_\delta, h)$. It will return the value of the random process at each point: $\mu(x_1), \ldots, \mu(x_N)$.
+a. Let's start with the simple case where $\mathcal{X} = [0,1]$, the unit interval.  Write a function that simulates a mean-zero Gaussian process on $[0,1]$ under the squared exponential covariance function.  The function will accept as arguments: (1) finite set of points $x_1, \ldots, x_N$ on the unit interval; and (2) a triplet $(\sigma^2_\mu, \sigma^2_\delta, h)$. It will return the value of the random process at each point: $\mu(x_1), \ldots, \mu(x_N)$.
 
-a. Use your function to simulate (and plot) Gaussian processes across a range of values for $\sigma^2_\mu$, $\sigma^2_\delta$, and $h$.  Try starting with a very small value of $\sigma^2_\delta$ (say, $10^{-6}$) and playing around with the other two first.  On the basis of your experiments, describe the role of these three hyperparameters in controlling the overall behavior of the random functions that result.  What happens when you try $\sigma^2_\delta = 0$? Why?
+a. Use your function to simulate (and plot) Gaussian processes across a range of values for $\sigma^2_\mu$, $\sigma^2_\delta$, and $h$.  Try starting with a very small value of $\sigma^2_\delta$ (say, $10^{-6}$) and playing around with the other two first.  On the basis of your experiments, describe the role of these three hyperparameters in controlling the overall behavior of the random functions that result.
 
-b. Write a function that fits a Gaussian process posterior under this prior 
-   distribution to data. This function should estimate the parameters $(\sigma^2, \sigma^2_\mu, h)$ by maximizing the marginal likelihood of the data $\bY$. The function should be of the form
+a. Write a function that evaluates the negative marginal log-likelihood of the data $\bY$ under a squared exponential kernel with parameters $(\sigma^2_\mu, \sigma^2_\delta, h, \sigma^2)$. For reasons we will see in the next part, your function should be of the form:
     ```{r, eval = FALSE}
-    fit_gp <- function(X, Y, X_test, sigma_delta) {
+    neg_loglik <- function(theta, sigma_delta_sq, X, y) {
+      sigma_mu_sq <- exp(theta[1])
+      h <- exp(theta[2])
+      sigma_sq <- exp(theta[3])
+      ## Your code here:
+    }
+    ```
+  Use this function to evaluate the marginal likelihood of the hyperparameter settings $\sigma^2_\mu = 1, \sigma^2_\delta = 0, \sigma^2 = 1, h = 0.2$ on the `utilities`, after centering and scaling both `temp` and `gasbill`.
+   
+a. Use the `optim` function with the `neg_loglik` function to optimize the hyperparameters for $(\sigma^2_\mu, \sigma^2, h)$ with the centered/scaled `temp` and `gasbill`, with using as initial values the parameters from the previous problem. What are the optimal parameter values?
+
+a. Write a function that fits a Gaussian process posterior under this prior 
+   distribution to data. The function should be of the form
+    ```{r, eval = FALSE}
+    fit_gp <- function(X, Y, X_test, sigma_mu_sq, h, sigma_sq, sigma_delta_sq) {
       ## Your code here
       return(list(
              mu_hat = mu_hat, 
              lower = lower,
-             upper = upper,
-             sigma_hat = sigma_hat, 
-             sigma_mu_hat = sigma_mu_hat, 
-             h_hat = h_hat
+             upper = upper
       ))
     }
     ```
-   where `mu_hat` is the posterior mean of the function evaluated at the points in `X_test`, `lower` and `upper` are the endpoints of 95% credible intervals intervals, `sigma_hat` is the estimate of the standard deviation, `sigma_mu_hat` is the estimate of $\sigma^2_\mu$, and `h_hat` is the posterior estimate of $h$.  Here, `sigma_delta` is the value of $\sigma^2_\delta$ used in the prior and `X_test` is an $N_{\text{test}} \times P$ design matrix of points that we want to evaluate the Gaussian process at. __NOTE:__ you derived the log marginal likelihood of $\bY$ in a previous problem. You can use the `optim` function in `R` to maximize this log-likelihood, but you should be careful in how you do this because there may be multiple modes of the marginal likelihood. 
+   where `mu_hat` is the posterior mean of the function evaluated at the points in `X_test`, `lower` and `upper` are the endpoints of 95% credible intervals intervals. Then use this with the optimal values to construct a scatterplot showing the original data, as well as a point estimate and 95% credible band for the mean function by fitting to the centered/scaled `temp` and `gasbill` (make sure to un-scale the results so that your scatterplot is back on the original scale of the data).
 
-c. Use the function you wrote to fit a Gaussian process to the data in `data/gp_data.csv` and plot a posterior mean and credible band for the result (you can use the same matrix `X` for the training and testing data).
-
-d. You might notice that the relationship between $Y_i$ and $X_i$ in this data appears to be approximately linear. One way to account for this is to use a _linear_ mean function in the Gaussian process model, i.e.,
+a. You might notice that the relationship between $Y_i$ and $X_i$ in this data appears to be approximately linear. One way to account for this is to use a _linear_ mean function in the Gaussian process model, i.e.,
 $$
   m(x) = \beta_0 + \beta_1 x \, .
 $$
@@ -745,50 +490,55 @@ Equivalently, the covariance matrix for $\bX$ is given by
 $$
   K_{\text{new}}(\bX, \bX) = K(\bX,\bX) + a^2 \, \boldsymbol{J} + b^2 \bX\bX^\top \, ,
 $$
-where $\boldsymbol{J} = \boldsymbol 1 \boldsymbol 1^\top$ is a matrix consisting of all $1$'s. Now, modify your `fit_gp` function to create a new function `fit_gp_linear` that fits a Gaussian process with a linear mean function to the data in `data/gp_data.csv` (you can fix $a$ and $b$ at somewhat large constants for this).  Plot the posterior mean and credible band for the result. How does this compare to the result from part (c)?
+where $\boldsymbol{J} = \boldsymbol 1 \boldsymbol 1^\top$ is a matrix consisting of all $1$'s. Now, modify your `fit_gp` function to create a new function `fit_gp_linear` that fits a Gaussian process with a linear mean function to the `utilities` data (you can fix $a$ and $b$ at somewhat large constants for this).  Plot the posterior mean and credible band for the result. How does this compare to the result from part (d)?
 
 :::
 
+## The Curse of Dimensionality
 
-:::{.solution}
+The smoothing techniques we have learned about so far rely on the idea of using _local information_ within a neighborhood of a point $x$ to estimate the regression function $\mu(x)$. However, in high-dimensional settings, smoothing techniques are susceptible to the _curse of dimensionality_: as the dimension of $x$ increases, basically all of the observed data will be "far away" from $x$. This creates the following dilemma for methods based on local information:
 
-We first define our function.
-```{r}
-simulate_gp <- function(x, sigma_mu, sigma_delta, h) {
-  if(is.matrix(x)) stop("Only vectors, please")
-  n <- length(x)
-  K <- sigma_mu^2 * exp(-as.matrix(dist(x))^2 / 2 / h^2) + 
-    sigma_delta^2 * diag(n)
-  f <- as.numeric(MASS::mvrnorm(n = 1, rep(0, n), K))
-  return(data.frame(x = x, f = f))
-}
-```
+1. We need to choose a large neighborhood (i.e., a large bandwidth) in order for the neighborhood to include multiple observations.
 
-a. Next, we use this function to plot realizations.
-    ```{r}
-    set.seed(digest::digest2int("getting gps"))
-    theme_set(theme_bw())
-    x_gp <- seq(from = 0, to = 1, length = 200)
-    ggplot(simulate_gp(x_gp, 1, 0.001, 0.05), aes(x = x, y = f)) + geom_line()
-    ggplot(simulate_gp(x_gp, 1, 0.001, 0.1), aes(x = x, y = f)) + geom_line()
-    ggplot(simulate_gp(x_gp, 1, 0.001, 0.2), aes(x = x, y = f)) + geom_line()
-    ggplot(simulate_gp(x_gp, 1, 0.01, 0.2), aes(x = x, y = f)) + geom_line()
-    ggplot(simulate_gp(x_gp, 3, 0, 3), aes(x = x, y = f)) + geom_line()
-    ```
+1. Taking the bandwidth large results in large amounts of bias.
 
-b. 
+The optimal tradeoff occurs when the variance of an estimator $\widehat \mu(x)$ is roughly equal to its squared bias, and it happens to be the case that this results in an optimal RMSE of order $N^{-2/(2+P)}$ (assuming that $\mu(x)$ is twice-continuously differentiable).
+
+::: exercise
+
+Supposing that the RMSE scales like $N^{-2/(2+P)}$, how large must $N$ be in order for us to get an RMSE less than a fixed constant $\delta$? How does this depend on the dimensionality $P$?
 
 :::
 
-:::{.exercise}
+::: exercise
 
-Go back to `utilities.csv` and plot the pointwise posterior mean and a 95% credible interval for the value of the function at each of the observed data points (superimposed on top of a scatterplot of the data itself). Do this using both the `fit_gp` and `fit_gp_linear` function you wrote in the previous exercise. How do the two fits to the data compare with one another?
+In this exercise, we will demonstrate numerically the point that observations in a high-dimensional space tend to be far away from one another.
+
+a. Write a function to generate $N$ random data points $X_i$ uniformly distribution within a $P$-dimensional hypercube.
+
+a. For each $X_i$, define its _nearest neighbor_ $X_{i'}$ by $i' = \min_{j \ne i}\{\|X_i - X_j\|\}$. Then, define the average nearest neighbor distance by
+$$
+  NND = \frac{1}{N} \sum_i \|X_i - X_{i'}\|.
+$$
+Write a function that computes the average nearest neighbor distance for a given dataset.
+
+a. Generate datasets for different dimensions $P$ ranging from 1 to 50, keeping the number of data points $N$ fixed. For each dataset, compute the average nearest neighbor distance divided by the average distance overall $\frac{1}{N^2} \sum_{i,j} \|X_i - X_j\|$ and store the results in a list. Plot the result as a function of $P$. _Explain how the result implies that all data points approach an equal amount of "closeness" to any given point as the dimension increases._
 
 :::
+
+At a high-level, the curse of dimensionality implies that fully-nonparametric methods are unlikely to be practical when the dimension is large. But not all hope is lost! To make progress on high-dimensional problems, one typically uses methods that are adaptive to certain _dimension reducing_ strategies. For example:
+
+- If the function $\mu(x) = \sum_{j=1}^P \mu_j(x_j)$ is _additive_ (i.e., there are no interactions in the covariates) then we are in much better shape, provided that we use a method that can take advantage of this additivity. Models that make this additivity assumption in the context of a generalized linear model with $g(\mu_i) = \sum_j \mu_j(x_j)$ are referred to as _generalized additive models_.
+
+- If the function $\mu(x)$ is _sparse_ (i.e., depending on $D \ll P$ covariates) then certain methods that perform variable selection will be able to perform well.
+
+- Some methods, such as the BART methods discussed below, can take advantage of both of these structures simultaneously.
+
+- Another way of making progress is to make assumptions about the dependence structure in the $X_i$'s, as if (say) $X_{i1}$ is very highly correlated with $X_{i2}$ then it is almost as though we only had one covariate. If the covariates are sufficiently highly correlated then even naive local methods have a chance of working well.
 
 ## Basis Function Expansions
 
-Basis function expansions are a population alternative approach to estimating functions from data. The main idea is to approximate the a function as a linear combination of a set of basis functions:
+Basis function expansions are a popular alternative approach to estimating functions from data. The main idea is to approximate the a function as a linear combination of a set of basis functions:
 $$
   \mu(x) = \beta_0 + \sum_{j = 1}^B \beta_j \, \psi_j(x)
 $$
@@ -807,11 +557,11 @@ An advantage of this approach is its relative simplicity: for an intelligently-c
 
 For univariate data, it is common to use a basis of _spline_ functions, which overcome some limitations the polynomial basis. While polynomials are simple and easy to understand, they have some drawbacks:
 
-1. Polynomials are _non-local_, with changes in the function in one area possibly having a large effect on the function in other areas (for an extreme example, see [Runge's phenomenon](https://en.wikipedia.org/wiki/Runge%27s_phenomenon)).
+1. Polynomials are _non-local_, with changes in the function in one area having (potentially) a large effect on the function in other areas (for an extreme example, see [Runge's phenomenon](https://en.wikipedia.org/wiki/Runge%27s_phenomenon)).
 
 2. Polynomial bases can be computationally unstable, especially when the degree is large.
 
-Splines are piecewise-defined functions that don't have these issues, but are still still being relatively simple to compute. Code displaying a commonly used spline basis is given below:
+Splines are piecewise functions that don't have these issues, but are still simple to compute. Code displaying a commonly used spline basis is given below:
 
 ```{r, message=FALSE, fig.cap="A set of cubic spline basis functions."}
 plot_spline_basis <- function(num_basis) {
@@ -835,233 +585,89 @@ plot_spline_basis <- function(num_basis) {
 plot_spline_basis(10)
 ```
 
-In the above figure, each of the basis function $\psi_j(x)$ corresponds to a _piecewise cubic function_ which is given by $\psi_j(x) = a_j + b_j \, x + c_j \, x^2 + d_j \, x^3$ on some interval $[L_j, U_j]$ and is $0$ outside this interval. The points at which these cubic polynomials become $0$ are referred to as the _knots_ of the spline. Given a set of knots $\{k_1, \ldots, k_D\}$, the cubic spline basis generates cubic functions on $[k_j, k_{j+1}]$ subject to the constraint that (i) $\mu(x)$ is continuous and (ii) $\mu(x)$ is two-times differentiable.
+In the above figure, each of the basis function $\psi_j(x)$ corresponds to a _piecewise cubic function_ which is given by $\psi_j(x) = a_j + b_j \, x + c_j \, x^2 + d_j \, x^3$ on some interval $[L_j, U_j]$ and is $0$ outside this interval. The points at which these cubic polynomials become $0$ are referred to as the _knots_ of the spline. Given a set of knots $\{k_1, \ldots, k_D\}$, the cubic spline basis generates cubic functions on $[k_j, k_{j+1}]$ subject to the constraint that (i) $\mu(x)$ is continuous and (ii) $\mu(x)$ is two-times differentiable. An additional constraint that is sometimes used is that (iii) $\mu(x)$ is _linear_ for $x < k_1$ and $x > k_D$; splines with this property are referred to as _natural cubic splines_, and the particular knots $k_1$ and $k_D$  are refered to as _boundary knots_. Given a vector `x` and a set of knots `my_knots` the command `ns(x, knots = my_knots, Boundary.knots = my_boundary_knots)` generates a design matrix that we can plug into functions like `lm` or `glm` (or, for Bayesian inference, `stan_lm` or `stan_glm`):
+```{r}
+set.seed(888)
 
-<!-- 
+x_spline <- seq(from = 0, to = 1, length = 200)
+knots_spline <- c(0.3, 0.5, .7)
+boundary_knots <- c(.2, .8)
+psi_spline <- ns(x_spline,
+                 knots = knots_spline, 
+                 Boundary.knots = boundary_knots)
+head(psi_spline)
 
-\section{In nonparametric regression and spatial smoothing}
+beta_spline <- rnorm(4)
+plot(x_spline, as.numeric(psi_spline %*% beta_spline), xlab = "x", 
+     ylab = latex2exp::TeX("$\\mu(x)$"))
+sapply(c(knots_spline, boundary_knots), \(y) abline(v = y, lty = 2))
+```
+The plot shows a random function $\mu(x)$ on $[0,1]$ with coefficients chosen randomly. Notice how the function extrapolates linearly beyond the boundary knots. 
 
-\item Go back to the utilities data, and plot the pointwise posterior mean and 95\% posterior confidence interval for the value of the function at each of the observed points $x_i$ (again, superimposed on top of the scatter plot of the data itself).  Choose $\tau^2_2$ to be very small, say $10^{-6}$, and choose $(b, \tau^2_1)$ that give a sensible-looking answer.\footnote{If you're bored with the utilities data, instead try the data in ethanol.csv, in which the NOx emissions of an ethanol engine are measured as the engine's fuel-air equivalence ratio (E in the data set) is varied.  Your goal would be to model NOx as a function of E using a Gaussian process. }
+As a default, `ns` chooses the knots to correspond to evenly-spaced percentiles of `x`. This is usually good enough for most purposes, although we note that it is actually smarter to use more knots in regions where $\mu(x)$ is more wiggly and fewer knots in regions where $\mu(x)$ is less wiggly. Alternatively, we might attempt try to estimate the knot locations from the data.
 
-\item Let $y_i = f(x_i) + \epsilon_i$, and suppose that $f$ has a Gaussian-process prior under the Matern(5/2) covariance function $C$ with scale $\tau^1_2$, range $b$, and nugget $\tau^2_2$.  Derive an expression for the marginal distribution of $y = (y_1 \ldots, y_N)$ in terms of $(\tau^2_1, b, \tau^2_2)$, integrating out the random function $f$.  This is called a marginal likelihood.
+::: exercise
 
-\item Return to the utilities or ethanol data sets. Fix $\tau^2_2 = 0$, and evaluate the log of the marginal likelihood function $p(y \mid \tau^2_1, b)$ over a discrete 2-d grid of points.\footnote{Don't just use a black-box optimizer; we want to make sure we get the best solution if there are multiple modes.} If you're getting errors in your code with $\tau^2_2 = 0$, use something very small instead.  Use this plot to choose a set of values $(\widehat{\tau^2_1}, \widehat{b})$ for the hyperparameters.  Then use these hyperparameters to compute the posterior mean for $f$, given $y$.  Comment on any lingering concerns you have with your fitted model.
+Consider the `utilities` dataset again.
 
-\item In \verb|weather.csv| you will find data on two variables from 147 weather stations in the American Pacific northwest.
-\begin{compactdesc}
-\item[pressure]: the difference between the forecasted pressure and the actual pressure reading at that station (in Pascals)
-\item[temperature]: the difference between the forecasted temperature and the actual temperature reading at that station (in Celsius)
-\end{compactdesc}
-There are also latitude and longitude coordinates of each  station.  Fit a Gaussian process model for each of the temperature and pressure variables.  Choose hyperparameters appropriately.  Visualize your fitted functions (both the posterior mean and posterior standard deviation) on a regular grid using something like a contour plot or color image.  Read up on the \verb|image|, \verb|filled.contour|, or \verb|contourplot|\footnote{in the lattice library} functions in R.  An important consideration: is Euclidean distance the appropriate measure to go into the covariance function?  Or do we need separate length scales for the two dimensions, i.e.
-$$
-d^2(x, z) = \frac{(x_1 - z_1)^2}{b_1^2} +  \frac{(x_2 - z_2)^2}{b_2^2} \, .
-$$
-Justify your reasoning for using Euclidean distance or this ``nonisotropic'' distance.
-
-
-%\item In \verb|droslong.csv|, you will find a small subset of a time-course DNA microarray experiment.  The gene-expression profiles of 2000 different genes in the fruit fly (Drosophila) genome are tracked over time during embryogenesis; you are getting data on 14 of these genes, organized in three groups (think of these as marking which cellular pathway that gene influences).  For each gene at each time point, there are 3 ``technical replicates''---that is, three copies of the same biological material from the same fly, run through the same process to measure gene expression.
-%
-%The question of interest is: how does each gene's expression profile change over time, as the process of embryogenesis unfolds?  Propose a hierarchical model for this data that properly reflects its structure.
-%
-%A nice graphics package is the ``lattice'' library.  Install and load this; then try commands such as
-%\begin{verbatim}
-%xyplot(log2exp~time | gene, data=droslong)
-%xyplot(log2exp~time | group, data=droslong)
-%\end{verbatim}
-%to begin exploring the structure of this data.
-
-\end{enumerate}
-
--->
-
-## Bayesian Nonparametric Estimation of a Distribution
-
-The most general nonparametric estimation problem is the problem of estimating an arbitrary _distribution_ $F$. We list some examples where one might want to estimating a distribution below.
-
-- In survival analysis, one is often interested in estimating the _survival function_ $S(t) = \Pr(T > t)$, with a focus on situations in which $T$ is the time until some "bad event" happens (say, death due to cancer or time to progression from HIV to AIDS). In clinical settings, this problem is virtually always paired with the "problem" that not all individuals suffering from a disease will die during the study, so that the survival time $T_i$ is not always observed.
-
-- We have spent a decent amount of time on generalized linear mixed effect models, but we have only assume that the random effect (say, $\alpha_i$) has a normal distribution $\Normal(0, \sigma^2_\alpha)$. As inferences might be sensitive to this assumption, we might prefer to estimate the _random effects_ distribution $\alpha_i \iid G$ nonparametrically.
-
-- Generalizing the above problem, we might have several different _populations_ of interest with $Y_{ij} \indep G_j$ for $j = 1,\ldots,J$ and $i = 1,\ldots,N_j$. To improve estimation when some of the $N_j$'s are small, we might hope to borrow information across subgroups by specifying some joint prior for $(G_1, \ldots, G_J)$.
-
-Note that in neither of these problems can we simply take $F$ to be the empirical distribution: in the case of survival analysis, we usually need to account for censoring of observations, in the case of GLMMs we do not directly observe the random effects $\alpha_i$, and in the case of hierarchical distribution estimation we are interested in _borrowing information_.
-
-A building block of many Bayesian approaches to nonparametric distribution estimation is the _Dirichlet process_.
-
-:::{.definition #dp name="Dirichlet process"}
-
-Let $\mathcal Z$ denote the sample space for some random variable $Z_1$, let $\alpha > 0$, and let $H$ be a probability distribution on $\mathcal Z$. We say that a _random probability measure_ (RPM) $F$ is a _Dirichlet process_ on $\mathcal Z$ if, for any _finite measurable partition_ $A_1, \ldots, A_k$ of $\mathcal Z$ we have
-$$
-  (F(A_1), \ldots, F(A_k))
-  \sim
-  \Dirichlet\{\alpha \, H(A_1), \ldots, \alpha \, H(A_k)\}.
-$$
+Write a function that takes as input variables `y` and `x` and a maximal number of spline basis functions `k_max` and outputs the optimal number of basis functions to use with the `ns` function in the `splines` package according to leave-one-out cross-validation. You can do this by fitting a linear model `fit` for each `k in 1:k_max` and computing the LOOCV as `mean((fit$residuals / (1 - hatvalues(fit)))^2)`. __How many basis functions is optimal for the `utilities` dataset?__
 
 :::
 
-Definition \@ref(def:dp) is conceptually pleasant but can sometimes be difficult to work with and masks some of the more important properties of the Dirichlet process. An equivalent definition is given below, which is "constructive" in nature.
+The above examples use an a-priori fixed number of basis functions $B$, with $B$ possibly being tuned based on the data. An alternative is to use an _adaptive_ basis function expansion $\sum_{j = 1}^B \beta_j \, \psi_j(x)$ where both the number of basis functions $B$ _as well as the particular $\psi_j$'s used_ are estimated from data. By carefully selecting the basis functions, it may be possible to represent $\mu(x)$ using only a small number of $\psi_j$'s. This is especially important in higher dimensions, where the curse of dimensionality is likely in play.
 
-:::{.definition #stick-breaking name="Alternate definition of the Dirichlet process"}
+A particularly common type of adaptive basis function expansion uses _decision trees_ as the basis functions. Decision trees are mostly self-explanatory. The following figure shows a decision tree for predicting the salary of baseball players during a particular MLB season.
 
-Let $\mathcal Z$ denote the sample space for some random variable $Z_1$, let $\alpha > 0$, and let $H$ be a probability distribution on $\mathcal Z$. We say that an RPM $F$ is a _Dirichlet process_ on $\mathcal Z$ if we can write
-$$
-  F(dz) = \sum_{k = 1}^\infty \omega_k \, \delta_{\theta_k}(dz)
-$$
-where $\theta_k \iid H$ and the $\omega_k$'s follow the _Sethuramann stick-breaking construction_
-$$
-  \omega_k = \omega'_k \prod_{j < k} (1 - \omega'_j)
-  \qquad \text{where} \qquad
-  \omega'_k \sim \Beta(1, \alpha).
-$$
-The prior for $\omega = (\omega_1, \omega_2, \ldots)$ is called the _Griffiths-Engen-McCloskey distribution_ and we write $\omega \sim \text{GEM}(\alpha)$ to denote this.
+```{r baseball-tree, echo = FALSE, fig.cap="Salary of MLB Players"}
+knitr::include_graphics("Figures/BaseballTree.png")
+```
 
+The nodes at the bottom of the tree give predictions, and are referred to as _leaf nodes_. As shown in the following figure, a decision tree also determines a _step function_ on the covariate space, with different predictions assigned to different regions of the space.
+
+```{r, echo = FALSE}
+knitr::include_graphics("Figures/treefig.png")
+```
+
+Decision trees can be used on their own, as in Figure \@ref(fig:baseball-tree), but are more powerful when used as basis functions. That is, we can take
+$$
+  \mu(x) 
+  = \sum_{t = 1}^T g(x; \mathcal T_t, \mathcal M_t)
+  = \sum_{t=1}^T \sum_{\ell \in \mathcal L(\mathcal T_t)} \eta_{t\ell} \, I(x \leadsto (\ell, t))
+$$
+where $(\mathcal T_t, \mathcal M_t)$ define a decision tree and associated leaf node predictions and $\mathcal L(\mathcal T_t)$ denotes the set of leaf nodes of $\mathcal T_t$. Here, the notation $[x \leadsto (\ell, t)]$ denotes the event that the covariate value $x$ is associated to leaf node $\ell$ of tree $t$.
+
+::: exercise
+
+Using tree-based basis functions as part of a basis function expansion is known as the _Bayesian additive regression trees_ (BART) framework. BART typically uses a prior distribution of the form $\eta_{t\ell} \iid \Normal(0, \sigma^2_\eta / T)$ with the trees $\mathcal T_t$ sampled according to a [branching process]() prior.
+
+The `boston` dataset is available in the `MASS` package as `boston <- MASS::Boston`. The dataset contains information about the housing market in the Boston area in the 1970s, with 506 observations and 14 variables. The dataset is commonly used to benchmark simple machine learning methods, but the original motivation was to understand the impact o pollution (specifically, nitrous oxide) on housing prices. The outcome of interest is `medv`, the median value of a house in a given census tract. Other variables include `nox` (the predictor of interest) and confounders such as crime rate (`crim`), distance to employment centers (`dis`), and the proportion of "lower status" individuals (`lstat`).
+
+a. Load the dataset and install the required package `BART`. 
+
+a. Perform an exploratory analysis of the marginals of the variables. What (if any) issues might there be in using the BART model, and how might you correct them?
+
+a. Split the data into a training set consisting of 80% observations in the training set and 20% of observations in the testing set; we will be using this to compare the BART model to Gaussian process regression later.
+
+a. Use the `wbart` function to fit a BART model with `medv` as the outcome. Does the method appear to mix well? Justify your answer. __If your approach does not mix well in the defaults, make sure to rerun the analysis with a larger number of burn-in/save iterations.__
+
+a. A (somewhat crude) measure of the importance of a variable in a BART ensemble is the number of times a variable is used to build a decision rule; or example, in our MLB tree, the variable `Runs` is used twice, while `SB` is used once, indicating that `Runs` may be more important. BART returns the total number of uses of each variable at each iteration in the object `my_bart_it$varcount`. 
+
+   According to this variable importance metric, which variable is used, on average, in the most splits?
+
+a. __Optional:__ The `bartMachine` package (which is tricker to install) has a function `interaction_investigator` that performs _interaction detection_ (i.e., it looks or pairs of variables that interact with one another). It does this in the same way that `wbart` assesses variable importance: we count the number of times two varibales _interact_ in the ensemble, and use this as a measure of interaction importance (for example, RBI interacts with SB in our MLB tree, arbitrartion status does not interact with SB). Fit the BART model using `bartMachine` and use `interaction_investigator` to identify important interactions. Are any of them particularly important?
+
+a. Using your train/test split, fit (i) the BART model and (ii) a Gaussian process (either modifying your earlier code to allow for multiple predictors or using an implementation such as the `bgp` function in the `tgp` package) to the training set, and then compute the predicted value of `medv` for the testing set. Which of the two methods has a lower value of the MSE 
+$$
+  \frac{1}{N_{\text{test}}} \sum_{i \in \text{test set}} (Y_i - \widehat Y_i)^2.
+$$
+where the $\widehat Y_i$'s are computed using only the data in the training set?
+
+a. Now, take your fitted values from the BART (say, `y_hat_bart`) and GP (say, `y_hat_gp`) and fit a linear model of the form `lm(medv ~ y_hat_bart + y_hat_gp)` to the test data. Estimate the RMSE of this model using LOOCV. How does it compare to the results for the BART/GP model when these methods are used by themselves? __Note:__ this strategy is sometimes referred to as _model blending_ or _model stacking_. 
+ 
 :::
 
-__Why is this true?__ A rigorous proof of the fact that the two definitions above are equivalent is beyond our scope, but if you are curious as to how one might guess that this is true note that under the original definition of the Dirichlet process it is possible to show that
-$$
-  F(dz) \stackrel{d}{=} \omega_1' \, \delta_{\theta} + (1 - \omega_1') \, F(dz).
-$$
-where $\omega_k' \iid \Beta(1, \alpha)$ (it's not beyond your abilities to prove this as a homework exercise, but we have better uses of our time). We can then basically repeatedly apply this to write
-$$
-  F(dz) \stackrel{d}{=} \sum_{k=1}^K \omega_k \, \delta_{\theta_k} + \left(\prod_{j = 1}^K (1 - \omega'_k)\right) \, F(dz).
-$$
-so that "letting $K \to \infty$" the first term goes to the Sethurmann stick-breaking construction, while the second term goes to $0$. This was basically Sethuramann's original reasoning, but it took a rather long time to publish the result, partially because getting all of the technical details correct is a bit tricky and, at the time, of unclear practical value.
-
-### The Posterior Distribution for the Dirichlet Process
-
-Aside from its elegant definition, the reason BNP inference for a distribution revolves around the Dirichlet process is that it is _conjugate to iid sampling._
-
-<!-- :::{.exercise} -->
-
-<!-- Suppose that $Z_1, \ldots, Z_N \iid F$ given $F$ and that $F \sim \DP(\alpha, H)$. -->
-
-<!-- (a) Show that, for an arbitrary set $A$, we have -->
-<!-- $$ -->
-<!--   \E\{F(A)\} = H(A). -->
-<!-- $$ -->
-<!-- The distribution $H$ is referred to as the _prior mean_ of $F$; explain why this terminology makes sense. -->
-
-<!-- (b) Show that, for an arbitrary set $A$, we have -->
-<!-- $$ -->
-<!--   \Var\{F(A)\} = \frac{H(A) \, \{1 - H(A)}}{\alpha + 1}. -->
-<!-- $$ -->
-<!-- The parameter $\alpha$ is referred as the _concentration_ or _precision_ parameter; explain why this terminology makes sense. -->
-
-<!-- (a) Show that the posterior distribution of $[F \mid Z_1, \ldots, Z_N]$ is a Dirichlet process with updated paraemters -->
-<!-- $$ -->
-<!--   \alpha^\star = \alpha + N -->
-<!--   \qquad \text{and} \qquad -->
-<!--   H^\star = \frac{\alpha}{\alpha + N} \, H + \frac{N}{\alpha + N} \, \EmpF_N. -->
-<!-- $$ -->
-
-<!-- ::: -->
-
-<!-- :::{.exercise} -->
-
-<!-- Revist the problem [[XXX]] -->
-
-<!-- ::: -->
-
-<!-- ## Nonparametric Estimation of a Regression Function -->
-
-<!-- $$ -->
-<!--   Y_i = \mu(X_i) + \epsilon_i -->
-<!-- $$ -->
-
-<!-- ### The Curse of Dimensionality -->
-
-<!-- The parametric and nonparametric esimation problems are quite different in practice; in particular, nonparametric estimation usually _much more difficult_ than parametric estimation. -->
-
-<!-- One complication is the so-called _curse of dimensionality_. [[XXX]] -->
-
-<!-- ### Basis Function Expansions -->
-
-
-
-<!-- :::{.exercise} -->
-
-<!-- A particular type of basis function expansion takes $\psi(x) = (\psi_1(x), \ldots, \psi_L(x))$ to correspond to step functions: -->
-<!-- $$ -->
-<!--   \psi_\ell(x) -->
-<!--   = -->
-<!--   \begin{cases} -->
-<!--     1 \qquad & \mbox{if } x \in A_\ell, \\ -->
-<!--     0 \qquad & \mbox{otherwise}. -->
-<!--   \end{cases} -->
-<!-- $$ -->
-
-<!-- ::: -->
-
-<!-- ### Smoothing Splines -->
-
-<!-- An alternate to the basis function approach to estimating $\mu(x)$ is to use -->
-
-<!-- ### Kernel Smoothing -->
-
-<!-- ### Bayesian Methods -->
-
-<!-- For the most part, the methods above have Bayesian analogs, and these methods typically have similar operating characteristics as the Frequentist solutions. For example, we could [[XXX: ADD MATERIAL ON BASIS FUNCTION EXPANSION]] -->
-
-<!-- [[MATERIAL ON GPs]] -->
-
-<!-- :::{.exercise} -->
-
-<!-- A common choice of covariance function for a Gaussian process is the _squared exponential kernel_ -->
-<!-- $$ -->
-  <!-- K(x, x') -->
-  <!-- = -->
-  <!-- \sigma^2_\mu \exp\left(-\rho \sum_{j=1}^P (x_j - x'_j)^2\right). -->
-<!-- $$ -->
-
-<!-- Code for generating some approximate samples from this prior distribution is given below. -->
-
-<!-- [[ADD CODE HERE]] -->
-
-<!-- a. Suppose that two points $x$ and $x'$ are identical except that $x_j \ne x'_j$ for some $j$. What is the correlation between $\mu(x)$ and $\mu(x')$ as a function of $(\sigma^2_\mu, \rho)$? -->
-
-<!-- a. [[ADD A SECOND PART HERE]] -->
-
-<!-- ::: -->
-
-<!-- The main challenge with using Gaussian processes is that they require the computation of $\{K(\bX, \bX) + \sigma^2\, \Identity\}^{-1}(\bY - m(\bX))$. Ostensibly, this requires computing the inverse of an $N \times N$ matrix, which is a very expensive operation, having computational complexity that scales like $N^3$ and memory requirement that scales like $N^2$; so, for example, if you have $10,000$ observations, you expect to need $100,000,000$ units of storage available and to wait $1,000,000,000,000$ units of time to compute the posterior. Needless to say, this is very expensive compared to (say) computing the least squares estimator $\widehat \beta$, which can be done with constant storage and compute time that scales with $N$. -->
-
-<!-- Because of this, there is a cottage industry focused no developing methods for fast inference with Gaussian processes - the two main strategies are to either (i) design $K(\mathbf x, \mathbf x')$ so that required computations can be performed quickly or (ii) approximate the inverse. -->
-
-
-
-<!-- ## Nonparametric Estimation of a Density -->
-
-<!-- ### Kernel Density Estimation -->
-
-<!-- ### Mixture Models -->
-
-<!-- ### Bayesian Methods -->
-
-<!-- The Dirichlet process is unfortunately not adequate for the purpose of modeling a density because it assigns prior probability $1$ to discrete distributions. Instead, most Bayesian approaches to density estimation are based on mixture models like [[XXX]], with a Dirichlet process used to model the latent variables; that is, we set -->
-<!-- $$ -->
-<!-- \begin{aligned} -->
-<!--   [Y_i \mid \bm\theta F] &\iid p_{\theta_i}(y), \\ -->
-<!--   [\theta_i \mid F] &\iid G, \\ -->
-<!--   G &\sim \DP(\alpha, H) -->
-<!-- \end{aligned} -->
-<!-- $$ -->
-<!-- Or, equivalently -->
-<!-- $$ -->
-<!--   f_G(y) -->
-<!--   = \int p_\theta(y) \ G(d\theta) -->
-<!--   = \sum_{k = 1}^\infty \omega_k \, p_{\theta_k}(y). -->
-<!-- $$ -->
-
-<!-- [[MORE STUFF HERE]] -->
-
-<!-- :::{.exercise} -->
-
-<!-- Use the package `dirichletprocess` to fit a Dirichlet process mixture model to the `galaxy` dataset. Then, plot the following quantities together: -->
-
-<!-- - The posterior mean of the density along a grid of 1000 points extending from _xxx_ to _xxx_. -->
-
-<!-- - A 95% credible bands for the density using the same grid. -->
-
-<!-- ::: -->
-
-
+```{r, eval = FALSE, echo = FALSE}
+library(dplyr)
+boston <- MASS::Boston
+boston_bart <- BART::wbart(boston %>% select(-medv), boston$medv, ndpost = 1000, nskip = 1000)
+```
