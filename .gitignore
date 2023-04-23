@@ -6,7 +6,10 @@ rsconnect/
 index.knit.md
 *.swp
 .vscode/
-Exam/
+Exam/crabs.txt
+Exam/Exam_cache/
+Exam/Exam_files/
+Exam/Exam-Sol.Rmd
 06-Nonparametric-Methods-Solutions.txt
 _main.log
 _main.pdf
