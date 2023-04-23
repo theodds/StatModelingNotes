@@ -1,5 +1,5 @@
 ---
-title: "Final Exam"
+title: "Statistical Modeling II Final Exam"
 output: pdf_document
 header-includes: |
   \newcommand{\iid}{\stackrel{\text{iid}}{\sim}}
